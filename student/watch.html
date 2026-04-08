@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学生观看直播</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23198f72'/%3E%3Cpath d='M18 20h24a6 6 0 0 1 6 6v12a6 6 0 0 1-6 6H18z' fill='white'/%3E%3Cpath d='M42 29l10-6v18l-10-6z' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script src="../vendor/lucide.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <section class="room-page" :class="{ 'chat-collapsed': chatCollapsed }">
+      <div class="screen-panel">
+        <div class="room-top">
+          <div class="room-main">
+            <h2>{{ room.title }}</h2>
+            <div class="room-meta">
+              <span class="meta-chip icon-chip"><i data-lucide="user-round"></i>{{ room.teacher }}</span>
+              <span class="meta-chip icon-chip"><i data-lucide="users"></i>{{ room.onlineCount }} 人在线</span>
+            </div>
+          </div>
+          <div class="room-status">
+            <span class="meta-chip live-chip"><i class="live-pulse"></i>{{ room.badge }}</span>
+            <span class="meta-chip icon-chip"><i data-lucide="clock-3"></i>{{ currentDuration }}</span>
+            <span class="meta-chip signal-badge"><i class="signal-bars"><b class="on"></b><b class="on"></b><b class="on"></b><b></b></i>{{ room.network }}</span>
+            <button class="collapse-btn fullscreen-btn icon-btn" @click="toggleFullscreen" :title="isFullscreen ? '取消全屏' : '全屏'"><i :data-lucide="isFullscreen ? 'shrink' : 'expand'"></i></button>
+          </div>
+        </div>
+        <div class="screen-stage" :class="{ 'stage-live': room.started }">
+          <div v-if="room.started" class="camera-panel"><div class="camera-box"><span>老师摄像头区域</span></div></div>
+          <div v-if="!room.started" class="start-panel">
+            <p>课程已开放进入</p>
+            <span>{{ room.description }}</span>
+            <button class="primary-btn start-btn" @click="startLive">开始观看直播</button>
+          </div>
+          <div v-else class="live-copy">
+            <p class="live-tag">直播画面</p>
+            <h3>共享屏幕画面</h3>
+            <span>{{ room.liveHint }}</span>
+          </div>
+        </div>
+      </div>
+      <aside class="chat-panel" :class="{ collapsed: chatCollapsed }">
+        <button class="chat-toggle-btn" @click="toggleChat" :title="chatCollapsed ? '展开聊天' : '折叠聊天'">
+          <span class="toggle-icon">{{ chatCollapsed ? '◀' : '▶' }}</span>
+          <span class="toggle-text">{{ chatCollapsed ? '展开聊天' : '折叠聊天' }}</span>
+        </button>
+        <div class="chat-head"><strong>互动区</strong></div>
+        <template v-if="!chatCollapsed">
+          <div class="msg-list" ref="msgList">
+            <article class="msg-item" :class="['msg-'+msg.type, { 'msg-self': msg.user === '我' }]" v-for="msg in messages" :key="msg.id">
+              <div class="msg-body">
+                <div class="msg-top">
+                  <div class="msg-userline">
+                    <span v-if="msg.type === 'teacher'" class="role-badge teacher-badge">讲</span>
+                    <span v-if="msg.type === 'system'" class="role-badge assistant-badge">助</span>
+                    <strong>{{ msg.user }}</strong>
+                  </div>
+                  <span>{{ msg.time }}</span>
+                </div>
+                <p class="msg-bubble">{{ msg.content }}</p>
+              </div>
+            </article>
+          </div>
+          <div class="chat-foot">
+            <div v-if="canChat" class="input-row">
+              <textarea class="chat-input" v-model.trim="inputMsg" @keydown.enter.exact.prevent="sendMsg" rows="1" maxlength="120" placeholder="输入消息"></textarea>
+              <button class="primary-btn send-btn" @click="sendMsg">{{ sending ? '发送中' : '发送' }}</button>
+            </div>
+            <p v-else class="mute-tip">{{ muteTip }}</p>
+          </div>
+        </template>
+      </aside>
+    </section>
+  </div>
+  <script src="../vendor/vue.min.js"></script>
+  <script src="watch.js"></script>
+</body>
+</html>

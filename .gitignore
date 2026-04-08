@@ -1,0 +1,5 @@
+.DS_Store
+.playwright-mcp/
+.serena/
+.spec-workflow/
+img/.spec-workflow/
