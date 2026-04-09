@@ -1,0 +1,89 @@
+:root{--bg:#f5f7fa;--card:#fff;--line:#dbe3ee;--text:#203042;--muted:#617284;--brand:#1f8b73;--brand-deep:#165f52;--stage:#0f1724}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font:14px/1.5 "PingFang SC","Helvetica Neue",sans-serif;background:var(--bg);color:var(--text)}
+button,textarea{font:inherit;cursor:pointer}
+#app{height:100%}
+
+/* 整体容器 */
+.m-wrap{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* 顶部栏 */
+.m-head{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#fff;border-bottom:1px solid var(--line);gap:10px}
+.m-head-main{min-width:0;flex:1}
+.m-title{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-meta{display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap}
+.m-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)}
+.m-chip svg{width:11px;height:11px;stroke-width:2;color:var(--muted)}
+.m-head-right{flex-shrink:0;display:flex;align-items:center;gap:6px}
+.m-live-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;background:#fff7f7;border:1px solid #ffd7d7;color:#d14343;font-size:11px;height:24px}
+.m-signal-chip,.m-duration{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:11px;font-variant-numeric:tabular-nums;color:#475569;font-weight:500;height:24px}
+.live-pulse{width:5px;height:5px;border-radius:50%;background:#ff5a57;animation:pulse 1.6s infinite;flex-shrink:0}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,90,87,.45)}70%{box-shadow:0 0 0 5px rgba(255,90,87,0)}100%{box-shadow:0 0 0 0 rgba(255,90,87,0)}}
+
+/* 直播视频区 */
+.m-stage{flex-shrink:0;width:100%;aspect-ratio:16/9;background:radial-gradient(circle at top,#1b2841,#0f1724 60%);position:relative;display:grid;place-items:center;overflow:hidden}
+.m-stage.stage-live{background:linear-gradient(180deg,#141d2e,#101826)}
+.m-camera{position:absolute;top:8px;left:8px;width:80px;height:52px;border-radius:8px;background:#000;border:1px solid rgba(255,255,255,.12);display:grid;place-items:center}
+.m-camera span{font-size:10px;color:#e5e7eb}
+.m-start,.m-live-hint{text-align:center;padding:20px 16px;color:#e8eef8}
+.m-start p,.m-live-hint .m-live-tag{font-size:10px;color:#8fb8ad;letter-spacing:.06em;text-transform:uppercase}
+.m-start span,.m-live-hint span{display:block;font-size:12px;color:#a9b8cb;margin:6px 0 12px}
+.m-live-hint h3{font-size:20px;margin:4px 0}
+.m-btn-primary{background:linear-gradient(135deg,var(--brand),var(--brand-deep));color:#fff;border:none;border-radius:10px;padding:8px 20px;font-size:13px}
+
+/* 互动区 */
+.m-chat{flex:1;min-height:0;display:flex;flex-direction:column;background:#fff;border-top:1px solid var(--line)}
+.m-chat-bar{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer}
+.m-chat-bar strong{font-size:13px;color:var(--text)}
+.m-chat-toggle{font-size:12px;color:var(--brand)}
+.m-chat-body{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.m-msg-list{flex:1;overflow-y:auto;padding:8px 14px}
+.m-msg{margin-bottom:10px}
+.msg-self{display:flex;flex-direction:column;align-items:flex-end}
+.m-msg-top{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.msg-self .m-msg-top{flex-direction:row-reverse}
+.m-msg-top strong{font-size:12px;color:var(--text)}
+.m-msg-time{font-size:11px;color:var(--muted)}
+.m-bubble{display:inline-block;max-width:80%;padding:7px 10px;border-radius:12px 12px 12px 3px;background:#f5f7fa;border:1px solid var(--line);font-size:13px;word-break:break-word}
+.msg-self .m-bubble{background:#eaf7f2;border-color:#d4ece3;border-radius:12px 12px 3px 12px}
+.role-badge{width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#fff !important;flex-shrink:0}
+.teacher-badge{background:#2f7cf6}
+.assistant-badge{background:#1f8b73}
+.m-chat-foot{flex-shrink:0;padding:8px 14px;border-top:1px solid var(--line)}
+.m-input-row{display:flex;gap:8px;align-items:flex-end}
+.m-input{flex:1;resize:none;min-height:36px;max-height:80px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);outline:none;font-size:13px;background:#f8fbfd}
+.m-send{padding:8px 14px;border-radius:10px;font-size:13px;white-space:nowrap}
+.m-mute-tip{font-size:12px;color:var(--muted);padding:6px 0}
+
+.signal-bars{display:inline-flex;align-items:flex-end;gap:2px;height:12px}.signal-bars b{width:3px;background:#c8d2df;border-radius:999px}.signal-bars b:nth-child(1){height:4px}.signal-bars b:nth-child(2){height:7px}.signal-bars b:nth-child(3){height:10px}.signal-bars b:nth-child(4){height:12px}.signal-bars .on{background:#f59e0b}
+
+/* 全屏右上角信息，默认隐藏，全屏时显示 */
+.m-fs-info{display:none;position:absolute;top:12px;right:12px;flex-direction:row;align-items:center;gap:6px;z-index:10}
+.stage-fullscreen .m-stage .m-fs-info{display:flex}
+
+/* 全屏按钮 */
+.m-fullscreen-btn{position:absolute;bottom:10px;right:10px;width:32px;height:32px;border-radius:8px;border:none;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;color:#fff}
+.m-fullscreen-btn svg{width:14px;height:14px;color:#fff}
+
+/* 全屏状态：旋转90度横向铺满 */
+.stage-fullscreen .m-head,
+.stage-fullscreen .m-chat{display:none}
+.stage-fullscreen .m-stage{
+  position:fixed;top:0;left:0;
+  width:100vh;height:100vw;
+  transform:rotate(90deg) translateY(-100%);
+  transform-origin:top left;
+  aspect-ratio:unset;
+  z-index:100;
+}
+
+/* 回放视频区 */
+.m-video-wrap{flex-shrink:0;width:100%;background:#000}
+.m-video{display:block;width:100%;aspect-ratio:16/9}
+
+/* 分节横向列表 */
+.m-seg-bar{flex-shrink:0;display:flex;gap:8px;padding:12px 14px;overflow-x:auto;background:#fff;border-top:1px solid var(--line);-webkit-overflow-scrolling:touch}
+.m-seg-bar::-webkit-scrollbar{display:none}
+.m-seg{flex-shrink:0;padding:7px 16px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:13px;color:var(--muted);white-space:nowrap;transition:.15s}
+.m-seg.active{background:#eaf7f2;border-color:rgba(31,139,115,.4);color:var(--brand);font-weight:600}

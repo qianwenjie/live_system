@@ -6,50 +6,34 @@
   <title>分节回放</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23198f72'/%3E%3Cpath d='M18 20h24a6 6 0 0 1 6 6v12a6 6 0 0 1-6 6H18z' fill='white'/%3E%3Cpath d='M42 29l10-6v18l-10-6z' fill='white'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
+  <script src="../vendor/lucide.min.js"></script>
 </head>
 <body>
   <div id="app">
-    <section class="replay-page">
-      <div class="replay-shell">
-        <div class="replay-summary">
-          <div>
-            <p class="entry-tag">课程回放</p>
-            <h1>{{ replay.title }}</h1>
-            <span>{{ replay.teacher }} · {{ replay.dateLabel }} · 共 {{ replay.segments.length }} 段</span>
+    <div class="rp-wrap">
+      <header class="room-top rp-head">
+        <div class="room-main">
+          <h2>{{ replay.title }} - 回放</h2>
+          <div class="room-meta">
+            <span class="meta-chip icon-chip"><i data-lucide="user-round"></i>{{ replay.teacher }}</span>
           </div>
         </div>
-        <div class="replay-layout">
-          <div class="replay-player-panel">
-            <div class="replay-player">
-              <video controls preload="metadata" :key="activeReplay.id">
-                <source :src="activeReplay.video" type="video/mp4">
-              </video>
-            </div>
-            <div class="replay-focus">
-              <div>
-                <p class="entry-tag">当前播放</p>
-                <h2>{{ activeReplay.title }}</h2>
-                <span>{{ activeReplay.range }} · {{ activeReplay.teacherState }}</span>
-              </div>
-              <p>{{ activeReplay.note }}</p>
-            </div>
-          </div>
-          <aside class="replay-playlist">
-            <div class="replay-list-head">
-              <strong>分节回放</strong>
-              <span>根据老师中途退出记录自动拆段</span>
-            </div>
-            <button v-for="segment in replay.segments" :key="segment.id"
-              class="segment-card" :class="{ active: activeReplayId === segment.id }"
-              @click="activeReplayId = segment.id">
-              <strong>{{ segment.title }}</strong>
-              <span>{{ segment.range }}</span>
-              <p>{{ segment.note }}</p>
-            </button>
-          </aside>
+      </header>
+      <div class="rp-body">
+        <div class="rp-player">
+          <video controls preload="metadata" :key="activeReplay.id">
+            <source :src="activeReplay.video" type="video/mp4">
+          </video>
         </div>
+        <aside class="rp-list">
+          <button v-for="(seg, idx) in replay.segments" :key="seg.id"
+            class="rp-seg" :class="{ active: activeReplayId === seg.id }"
+            @click="activeReplayId = seg.id">
+            第 {{ idx + 1 }} 节
+          </button>
+        </aside>
       </div>
-    </section>
+    </div>
   </div>
   <script src="../vendor/vue.min.js"></script>
   <script src="replay.js"></script>
