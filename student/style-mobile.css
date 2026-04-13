@@ -48,7 +48,7 @@ button,textarea{font:inherit;cursor:pointer}
 .m-bubble{display:inline-block;max-width:80%;padding:7px 10px;border-radius:12px 12px 12px 3px;background:#f5f7fa;border:1px solid var(--line);font-size:13px;word-break:break-word}
 .msg-self .m-bubble{background:#eaf7f2;border-color:#d4ece3;border-radius:12px 12px 3px 12px}
 .role-badge{width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#fff !important;flex-shrink:0}
-.teacher-badge{background:#2f7cf6}
+.teacher-badge{background:#f97316}
 .assistant-badge{background:#1f8b73}
 .m-chat-foot{flex-shrink:0;padding:8px 14px;border-top:1px solid var(--line)}
 .m-input-row{display:flex;gap:8px;align-items:flex-end}
