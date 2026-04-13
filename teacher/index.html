@@ -9,17 +9,221 @@
 </head>
 <body>
 <div id="app">
-  <section v-if="route==='login'" class="page login-page">
-    <div class="ambient"></div><div class="login-shell"><aside class="login-side"><p class="eyebrow">Teacher Studio</p><h1>老师客户端网页模拟</h1><p>覆盖房间号直达、机构账号登录、教务平台自动唤起三种路径，保留桌面客户端感与课前准备流程。</p><div class="side-cards"><article><strong>直播链路</strong><span>屏幕共享 + 摄像头画中画 + 麦克风混流</span></article><article><strong>课堂管理</strong><span>学生在线、单人禁言、全体禁言、聊天与结束直播</span></article><article><strong>设备预检</strong><span>检测摄像头、麦克风、共享权限与网络建议</span></article></div></aside><main class="login-card"><div class="brand"><span class="brand-dot"></span><div><strong>星海直播教室</strong><small>{{ institution.name }}</small></div></div><div class="tab-row"><button v-for="tab in tabs" :key="tab.key" :class="['tab-btn',loginType===tab.key?'active':'']" @click="loginType=tab.key">{{ tab.label }}</button></div><div v-if="loginType==='room'" class="form-grid"><label><span>房间号</span><input v-model="forms.room"></label><label><span>房间密码</span><input type="password" v-model="forms.roomPass"></label><div class="meta-line"><b>直达直播间</b><small>适合老师收到房间号后快速开播</small></div><button class="primary" @click="submitLogin('room')">进入设备检测</button></div><div v-else-if="loginType==='org'" class="form-grid"><label><span>机构名称</span><input v-model="forms.org"></label><label><span>机构账号</span><input v-model="forms.user"></label><label><span>登录密码</span><input type="password" v-model="forms.orgPass"></label><div class="meta-line"><b>教务账号体系</b><small>登录后查看本账号下的直播课列表与状态</small></div><button class="primary" @click="submitLogin('org')">进入课程列表</button></div><div v-else class="auto-box"><div class="spinner"></div><strong>正在接收 {{ institution.tokenName }} 登录凭证</strong><p>模拟教务平台点击"进入直播"后自动唤起客户端，约 2 秒后直达直播间。</p><button class="ghost" @click="submitLogin('auto')">重新触发自动登录</button></div></main></div>
+  <section v-if="route==='login'" class="login-page">
+    <canvas class="login-canvas" id="loginCanvas"></canvas>
+    <div class="login-wrap">
+      <div class="login-brand">
+        <span class="login-brand-name">Whaty 直播</span>
+      </div>
+      <p class="login-sub">教师端</p>
+      <div class="tab-row">
+        <button v-for="tab in tabs" :key="tab.key"
+          :class="['tab-btn', loginType===tab.key ? 'active' : '']"
+          @click="loginType=tab.key">{{ tab.label }}</button>
+      </div>
+      <div v-if="loginType==='room'" class="form-grid">
+        <label><span>房间号</span><input v-model="forms.room" placeholder="请输入房间号"></label>
+        <label><span>房间密码</span><input type="password" v-model="forms.roomPass" placeholder="请输入房间密码"></label>
+        <button class="primary login-btn" @click="submitLogin('room')">登录</button>
+      </div>
+      <div v-else-if="loginType==='org'" class="form-grid">
+        <template v-if="orgStep===1">
+          <label><span>机构账号</span><input v-model="forms.user" placeholder="请输入账号"></label>
+          <label><span>登录密码</span><input type="password" v-model="forms.orgPass" placeholder="请输入密码"></label>
+          <button class="primary login-btn" @click="orgNextStep">下一步</button>
+        </template>
+        <template v-else>
+          <label><span>学校名称</span><input v-model="forms.org" placeholder="请输入学校名称" ref="orgNameInput"></label>
+          <button class="primary login-btn" @click="submitLogin('org')">登录</button>
+          <button class="ghost login-btn-back" @click="orgStep=1">返回</button>
+        </template>
+      </div>
+      <div v-else class="auto-box">
+        <p class="auto-desc">点击下方按钮，模拟教务平台唤起客户端登录</p>
+        <button class="primary login-btn" @click="triggerAutoLogin">唤起教务平台登录</button>
+        <div v-if="autoLoading" class="auto-loading">
+          <div class="spinner"></div>
+          <span>正在接收 {{ institution.tokenName }} 登录凭证…</span>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section v-else-if="route==='courses'" class="page courses-page"><header class="subtop"><div><p class="eyebrow">机构课程台</p><h2>{{ institution.name }}</h2><span>{{ institution.account }} · 今日课程 4 门</span></div><div class="top-actions"><button class="ghost" @click="go('login')">切换账号</button><button class="primary" @click="go('live')">继续上次直播</button></div></header><div class="course-grid"><article v-for="course in courses" :key="course.id" class="course-card"><div class="status-line"><span class="pill" :data-status="course.status">{{ course.status }}</span><small>{{ course.mode }}</small></div><h3>{{ course.title }}</h3><p>{{ course.desc }}</p><dl><div><dt>讲师</dt><dd>{{ course.teacher }}</dd></div><div><dt>时间</dt><dd>{{ course.time }}</dd></div><div><dt>房间号</dt><dd>{{ course.roomId }}</dd></div></dl><button :class="course.status==='已结束'?'ghost':'primary'" @click="openCourse(course)">{{ course.status==='已结束'?'查看记录':'进入直播' }}</button></article></div></section>
 
-  <section v-else-if="route==='check'" class="page check-page"><header class="subtop"><div><p class="eyebrow">课前准备</p><h2>{{ course.title }}</h2><span>{{ course.time }} · {{ course.roomId }}</span></div><div class="top-actions"><button class="ghost" @click="go('courses')">返回课程列表</button><button class="primary" @click="go('live')">跳过并进入直播间</button></div></header><div class="check-grid"><article class="panel preview-panel"><div class="panel-head"><strong>摄像头预览</strong><small>{{ device.camLabel }}</small></div><div class="video-shell" :style="{background:bgStyle}"><video ref="camVideo" autoplay muted playsinline></video><div class="overlay-tag">{{ live.camOn?'摄像头已连接':'摄像头已关闭' }}</div><div class="preview-copy"><b>{{ device.camStatus==='ok'?'画面正常':'使用 Mock 预览' }}</b><span>建议抬高摄像头至视线平齐，便于学生感知讲授状态。</span></div></div></article><article class="panel checklist"><div class="device-item"><strong>摄像头</strong><span>{{ device.camStatus==='ok'?'已检测到真实设备':'浏览器未授权，使用演示模式' }}</span></div><div class="device-item"><strong>麦克风</strong><select v-model="device.micLabel"><option v-for="item in device.micOptions" :key="item">{{ item }}</option></select></div><div class="meter"><i :style="{width:micMeter+'%'}"></i></div><div class="device-item"><strong>屏幕共享</strong><span>{{ device.screenStatus==='ok'?'已完成测试共享':device.screenStatus==='mock'?'当前浏览器不支持真实共享，已展示模拟流程':'尚未测试共享' }}</span></div><div class="device-item"><strong>网络建议</strong><span>{{ device.network }}</span></div><p class="hint">{{ device.note }}</p><div class="check-actions"><button class="ghost" @click="prepareDevices()">重新检测音视频</button><button class="ghost" @click="testScreen()">测试屏幕共享</button><button class="primary" @click="go('live')">进入直播间</button></div></article></div></section>
+  <section v-else-if="route==='check'" class="check-page">
+    <div class="check-card">
+      <div class="check-header">
+        <h2>设备检测</h2>
+      </div>
+      <div class="check-body">
+        <!-- 左：摄像头 -->
+        <div class="check-left">
+          <div class="check-section-title">
+            <span>摄像头</span>
+          </div>
+          <div class="check-select-wrap">
+            <select class="check-select" v-model="device.camLabel">
+              <option v-for="item in device.camOptions||[device.camLabel]" :key="item">{{ item }}</option>
+            </select>
+          </div>
+          <div class="check-video-wrap">
+            <video ref="camVideo" autoplay muted playsinline
+              :style="(device.mirror?'transform:scaleX(-1);':'')+( device.vbgId!=='none'?'display:none':'' )"></video>
+            <canvas ref="bgCanvas" class="check-bg-canvas" :style="device.vbgId!=='none'?'display:block':''"></canvas>
+            <div v-if="device.camStatus!=='ok'" class="check-video-empty">
+              <span>摄像头未连接</span>
+            </div>
+          </div>
+          <!-- 虚拟背景 -->
+          <div class="check-section-title" style="margin-top:18px">虚拟背景</div>
+          <div class="check-vbg-row">
+            <button v-for="bg in checkBgs" :key="bg.id"
+              class="check-vbg-btn" :class="device.vbgId===bg.id?'active':''"
+              @click="selectCheckBg(bg.id)">
+              <span class="check-vbg-thumb">
+                <template v-if="bg.id==='none'">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                </template>
+                <template v-else>
+                  <img :src="bg.thumb" style="width:100%;height:100%;object-fit:cover;border-radius:6px">
+                </template>
+              </span>
+              <span class="check-vbg-label">{{ bg.label }}</span>
+            </button>
+          </div>
+        </div>
+        <!-- 右：麦克风 + 扬声器 -->
+        <div class="check-right">
+          <div class="check-section-title">麦克风</div>
+          <div class="check-device-row">
+            <div class="check-select-wrap" style="flex:1;margin-bottom:0">
+              <select class="check-select" v-model="device.micLabel">
+                <option v-for="item in device.micOptions" :key="item">{{ item }}</option>
+              </select>
+            </div>
+            <button class="check-test-btn" @click="toggleMicTest">{{ device.micTesting ? '停止测试' : '检测麦克风' }}</button>
+          </div>
+          <div class="check-meter-row" style="margin-top:14px">
+            <span class="check-meter-label">输入等级</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="9" y="2" width="6" height="12" rx="3" fill="#1f8b73"/><path d="M5 10a7 7 0 0 0 14 0" stroke="#1f8b73" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="17" x2="12" y2="21" stroke="#1f8b73" stroke-width="2" stroke-linecap="round"/></svg>
+            <div class="check-meter-blocks">
+              <span v-for="i in 12" :key="i" class="check-meter-block" :class="i <= Math.round(micMeter/100*12) ? 'active' : ''"></span>
+            </div>
+          </div>
+          <div class="check-section-title" style="margin-top:28px">扬声器</div>
+          <div class="check-device-row">
+            <div class="check-select-wrap" style="flex:1;margin-bottom:0">
+              <select class="check-select" v-model="device.speakerLabel">
+                <option v-for="item in device.speakerOptions||['系统默认扬声器']" :key="item">{{ item }}</option>
+              </select>
+            </div>
+            <button class="check-test-btn" @click="toggleSpeakerTest">{{ device.speakerTesting ? '停止测试' : '检测扬声器' }}</button>
+          </div>
+          <div class="check-meter-row" style="margin-top:14px">
+            <span class="check-meter-label">输出等级</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H2v6h4l5 4V5Z" fill="#1f8b73"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="#1f8b73" stroke-width="2" stroke-linecap="round"/></svg>
+            <div class="check-meter-blocks">
+              <span v-for="i in 12" :key="i" class="check-meter-block" :class="i <= Math.round(speakerMeter/100*12) ? 'active' : ''"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="check-footer">
+        <button class="check-done-btn" @click="go('live')">完成</button>
+      </div>
+    </div>
+  </section>
 
   <section v-else class="page live-page"><header class="live-top"><div><p class="eyebrow">Live Now</p><h2>{{ course.title }}</h2><span>{{ timerText }} · 在线 {{ onlineCount }} 人 · {{ liveNotice }}</span></div><div class="top-actions"><button class="ghost" @click="ui.bgModal=true">虚拟背景</button><button class="danger" @click="ui.endConfirm=true">结束直播</button></div></header><div class="live-grid"><main class="stage-wrap"><div class="stage" :style="{background:bgStyle}"><video v-show="live.screenOn" ref="screenVideo" autoplay muted playsinline></video><div v-if="!live.screenOn" class="screen-empty"><h3>屏幕共享主画面</h3><p>支持选择整个桌面或某个应用窗口，摄像头画面将以画中画叠加。</p><button class="primary" @click="toggleScreen()">开始共享屏幕</button></div><aside class="pip" :class="live.camOn?'on':''"><video v-show="live.camOn" ref="pipVideo" autoplay muted playsinline></video><div v-if="!live.camOn" class="pip-empty">摄像头已关闭</div><span class="pip-badge">{{ bgLabel }}</span></aside><div class="stage-bar"><button :class="['tool',live.screenOn?'active':'']" @click="toggleScreen()">{{ live.screenOn?'停止共享':'共享屏幕' }}</button><button :class="['tool',live.camOn?'active':'']" @click="toggleCam()">{{ live.camOn?'关闭摄像头':'开启摄像头' }}</button><button :class="['tool',live.micOn?'active':'']" @click="toggleMic()">{{ live.micOn?'关闭麦克风':'开启麦克风' }}</button><div class="mini-meter"><i :style="{width:micMeter+'%'}"></i></div></div></div><div class="studio-cards"><article class="panel"><strong>课堂场控</strong><p>支持教务平台考勤回传、敏感词过滤、公开课模式和伪直播切换策略。</p></article><article class="panel"><strong>讲授建议</strong><p>当前推荐"屏幕共享 + 摄像头开 + 麦克风开"，有利于保留真实授课临场感。</p></article></div></main><aside class="side-wrap"><div class="panel student-panel"><div class="panel-head"><strong>在线学生 ({{ live.students.length }})</strong><button class="ghost mini" @click="toggleAllMute()">{{ live.allMuted?'取消全体禁言':'全体禁言' }}</button></div><div class="student-list"><article v-for="student in live.students" :key="student.id" class="student-row"><div><b>{{ student.name }}</b><span>{{ student.online }} · 专注度 {{ student.attention }}%</span></div><button class="ghost mini" @click="toggleStudentMute(student)">{{ student.muted?'取消禁言':'禁言' }}</button></article></div></div><div class="panel chat-panel"><div class="panel-head"><strong>课堂聊天</strong></div><div class="chat-list" ref="chatList"><article v-for="msg in live.messages" :key="msg.id" class="chat-item" :data-role="msg.role"><div><b>{{ msg.user }}</b><span>{{ msg.time }}</span></div><p>{{ msg.content }}</p></article></div><div class="chat-form"><textarea v-model="live.pendingMsg" placeholder="输入要发送给学生的课堂消息"></textarea><div class="chat-actions"><small>{{ live.allMuted?'当前全体禁言中，学生无法发言':'学生仍可发送文字聊天' }}</small><button class="primary" @click="sendChat()">发送消息</button></div></div></div></aside></div><div v-if="ui.bgModal" class="modal-mask" @click.self="ui.bgModal=false"><div class="modal"><div class="panel-head"><strong>选择虚拟背景</strong><button class="ghost mini" @click="ui.bgModal=false">关闭</button></div><div class="bg-grid"><button v-for="bg in backgrounds" :key="bg.id" class="bg-card" :class="live.selectedBackgroundId===bg.id?'active':''" @click="selectBackground(bg.id)"><i :style="{background:bg.style}"></i><span>{{ bg.label }}</span></button></div></div></div><div v-if="ui.endConfirm" class="modal-mask" @click.self="ui.endConfirm=false"><div class="modal"><h3>确认结束直播？</h3><p>结束后将停止屏幕共享、摄像头与麦克风，并返回{{ loginContext==='roomDirect'?'登录页':'课程列表' }}。</p><div class="dialog-actions"><button class="ghost" @click="ui.endConfirm=false">继续直播</button><button class="danger" @click="confirmEnd()">确认结束</button></div></div></div></section>
 </div>
 <script src="../vendor/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/selfie_segmentation.js" crossorigin="anonymous"></script>
 <script src="app.js"></script>
+<script>
+(function(){
+  var canvas = document.getElementById('loginCanvas');
+  if(!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var W, H, particles = [], orbs = [], t = 0;
+
+  function resize(){
+    W = canvas.width = canvas.offsetWidth;
+    H = canvas.height = canvas.offsetHeight;
+  }
+
+  // 粒子
+  function mkParticle(){
+    return { x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.5+.4,
+      vx: (Math.random()-.5)*.3, vy: (Math.random()-.5)*.3,
+      a: Math.random(), da: Math.random()*.008+.003 };
+  }
+  function initParticles(){ particles = []; for(var i=0;i<55;i++) particles.push(mkParticle()); }
+
+  // 光球
+  orbs = [
+    { x:.25, y:.3,  r:220, c:'rgba(31,139,115,', spd:.0007, ox:.18, oy:.14 },
+    { x:.75, y:.65, r:180, c:'rgba(45,212,191,', spd:.0011, ox:.12, oy:.18 },
+    { x:.5,  y:.15, r:150, c:'rgba(31,100,80,',  spd:.0009, ox:.22, oy:.1  }
+  ];
+
+  function drawOrbs(){
+    orbs.forEach(function(o){
+      var cx = (o.x + Math.sin(t*o.spd*1000)*o.ox) * W;
+      var cy = (o.y + Math.cos(t*o.spd*1000)*o.oy) * H;
+      var g = ctx.createRadialGradient(cx,cy,0,cx,cy,o.r);
+      g.addColorStop(0, o.c+'.13)');
+      g.addColorStop(1, o.c+'0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cx,cy,o.r,0,Math.PI*2); ctx.fill();
+    });
+  }
+
+  function drawGrid(){
+    ctx.strokeStyle = 'rgba(31,139,115,.04)';
+    ctx.lineWidth = 1;
+    var step = 48;
+    for(var x=0;x<W;x+=step){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
+    for(var y=0;y<H;y+=step){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
+  }
+
+  function drawParticles(){
+    particles.forEach(function(p){
+      p.x += p.vx; p.y += p.vy; p.a += p.da;
+      if(p.x<0||p.x>W) p.vx*=-1;
+      if(p.y<0||p.y>H) p.vy*=-1;
+      var alpha = (Math.sin(p.a)*.5+.5)*.6+.1;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle = 'rgba(31,139,115,'+alpha+')';
+      ctx.fill();
+    });
+  }
+
+  function drawLines(){
+    for(var i=0;i<particles.length;i++){
+      for(var j=i+1;j<particles.length;j++){
+        var dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y;
+        var d=Math.sqrt(dx*dx+dy*dy);
+        if(d<90){
+          ctx.strokeStyle='rgba(31,139,115,'+(1-d/90)*.08+')';
+          ctx.lineWidth=.6;
+          ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);
+          ctx.lineTo(particles[j].x,particles[j].y);ctx.stroke();
+        }
+      }
+    }
+  }
+
+  function frame(ts){ t=ts||0;
+    ctx.clearRect(0,0,W,H);
+    drawGrid(); drawOrbs(); drawLines(); drawParticles();
+    requestAnimationFrame(frame);
+  }
+
+  window.addEventListener('resize', function(){ resize(); initParticles(); });
+  resize(); initParticles(); requestAnimationFrame(frame);
+})();
+</script>
 </body>
 </html>

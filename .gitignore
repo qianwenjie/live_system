@@ -3,3 +3,12 @@
 .serena/
 .spec-workflow/
 img/.spec-workflow/
+**/node_modules/
+**/.agent-browser-home/
+teacher/pin-image-browser.png
+teacher/pinterest-reference.png
+teacher/reference-pin-full.png
+teacher/reference-pin.png
+teacher/teacher-login-3d-icons-rebuild.png
+teacher/bg-living-room.png
+teacher/bg-meeting.png
