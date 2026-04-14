@@ -94,6 +94,25 @@ function createPip() {
   pipWin.on('closed', () => { pipWin = null; });
 }
 
+function createChatPanel() {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const panelW = 320, panelH = Math.min(600, height - 100);
+  chatWin = new BrowserWindow({
+    width: panelW, height: panelH,
+    x: width - panelW - 12, y: Math.round((height - panelH) / 2),
+    frame: false, transparent: true,
+    alwaysOnTop: true, resizable: false,
+    skipTaskbar: true,
+    webPreferences: {
+      nodeIntegration: false, contextIsolation: true,
+      preload: path.join(__dirname, 'preload-toolbar.js')
+    }
+  });
+  chatWin.loadFile(path.join(__dirname, 'chat-panel.html'));
+  chatWin.setAlwaysOnTop(true, 'screen-saver');
+  chatWin.on('closed', () => { chatWin = null; shareState.chatOpen = false; if (toolbarWin) toolbarWin.webContents.send('state-update', shareState); });
+}
+
 function activateWindows(windowIds) {
   if (!windowIds || !windowIds.length) return;
   const bin = path.join(__dirname, 'native', 'corner-overlay');
@@ -102,7 +121,7 @@ function activateWindows(windowIds) {
 }
 
 function startShareMode(data) {
-  shareState = { micOn: data.micOn || false, camOn: data.camOn || false, chatOpen: false, screenLabel: data.screenLabel || '共享中' };
+  shareState = { micOn: data.micOn || false, camOn: data.camOn || false, chatOpen: false, screenLabel: data.screenLabel || '共享中', appIcons: data.appIcons || [] };
   liveSeconds = data.seconds || 0;
   networkSignal = data.signal || 3;
 
@@ -141,21 +160,108 @@ function stopShareMode() {
   if (win) { win.show(); win.focus(); }
 }
 
+// 通过 Swift 工具获取 windowId 对应的 app icon（base64 PNG）
+function getAppIcon(windowId) {
+  return new Promise((resolve) => {
+    const bin = path.join(__dirname, 'native', 'corner-overlay');
+    const p = spawn(bin, ['icon', String(windowId)]);
+    let out = '';
+    p.stdout.on('data', d => { out += d.toString(); });
+    p.on('close', () => resolve(out.trim() ? 'data:image/png;base64,' + out.trim() : null));
+    p.on('error', () => resolve(null));
+    setTimeout(() => { try { p.kill(); } catch(e) {} resolve(null); }, 2000);
+  });
+}
+
+// 批量截图多个窗口（一个进程、一次 SCK 查询），返回 { "wid": "data:image/png;base64,..." }
+function captureWindows(windowIds) {
+  if (!windowIds.length) return Promise.resolve({});
+  return new Promise((resolve) => {
+    const bin = path.join(__dirname, 'native', 'corner-overlay');
+    const p = spawn(bin, ['capture-windows', ...windowIds.map(String)]);
+    let out = '';
+    p.stdout.on('data', d => { out += d.toString(); });
+    p.on('close', () => {
+      try {
+        const raw = JSON.parse(out.trim());
+        const mapped = {};
+        for (const [k, v] of Object.entries(raw)) { mapped[k] = 'data:image/png;base64,' + v; }
+        resolve(mapped);
+      } catch(e) { resolve({}); }
+    });
+    p.on('error', () => resolve({}));
+    setTimeout(() => { try { p.kill(); } catch(e) {} resolve({}); }, 5000);
+  });
+}
+
+// 用 Swift 获取所有窗口列表（包括最小化），返回 [{windowId, name, pid}]
+function getAllWindows() {
+  return new Promise((resolve) => {
+    const bin = path.join(__dirname, 'native', 'corner-overlay');
+    const p = spawn(bin, ['list-windows']);
+    let out = '';
+    p.stdout.on('data', d => { out += d.toString(); });
+    p.on('close', () => {
+      try { resolve(JSON.parse(out.trim())); } catch(e) { resolve([]); }
+    });
+    p.on('error', () => resolve([]));
+    setTimeout(() => { try { p.kill(); } catch(e) {} resolve([]); }, 3000);
+  });
+}
+
 // IPC: 获取屏幕/窗口源列表
 ipcMain.handle('get-sources', async () => {
   try {
-    const sources = await desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: 200, height: 130 } });
-    console.log('[get-sources] raw count:', sources.length);
-    const result = sources
+    const selfAppName = app.getName();
+    const selfFilters = [selfAppName, 'Electron', '直播平台', 'Developer Tools'];
+
+    const [sources, allWins] = await Promise.all([
+      desktopCapturer.getSources({ types: ['window'], thumbnailSize: { width: 200, height: 130 } }),
+      getAllWindows()
+    ]);
+
+    // desktopCapturer 可见窗口
+    const filtered = sources
       .filter(s => s.name && s.name.trim())
-      .map(s => ({
-        id: s.id,
-        windowId: s.id.split(':')[1],
-        name: s.name,
-        thumbnail: s.thumbnail.toDataURL(),
-      }));
-    console.log('[get-sources] filtered count:', result.length);
-    return result;
+      .filter(s => !selfFilters.some(f => s.name.includes(f)) && !s.name.startsWith('teacher'));
+
+    // 已被 desktopCapturer 覆盖的 owner 名
+    const capturedOwners = new Set(filtered.map(s => s.name.split(' - ')[0]));
+
+    // Swift 补全：desktopCapturer 抓不到的应用（每个 owner 只补一条，无缩略图）
+    const extraOwners = new Set();
+    const extra = allWins.filter(w => {
+      if (!w.owner || selfFilters.some(f => w.owner.includes(f))) return false;
+      if (capturedOwners.has(w.owner)) return false;
+      if (extraOwners.has(w.owner)) return false;
+      extraOwners.add(w.owner);
+      return true;
+    });
+
+    console.log('[sources ALL]', sources.map(s => s.name + '|empty:' + s.thumbnail.isEmpty()));
+    console.log('[allWins]', allWins.map(w=>w.owner));
+    console.log('[extra]', extra.map(w=>w.owner));
+
+    // 批量截图 extra 窗口（一个进程完成所有截图）
+    const extraWids = extra.map(w => String(w.windowId));
+    const thumbMap = await captureWindows(extraWids);
+
+    const result = await Promise.all([
+      ...filtered.map(async s => {
+        const windowId = s.id.split(':')[1];
+        const appIcon = await getAppIcon(windowId);
+        const thumb = s.thumbnail.isEmpty() ? null : s.thumbnail.toDataURL();
+        return { id: s.id, windowId, name: s.name, thumbnail: thumb, appIcon };
+      }),
+      ...extra.map(w => {
+        const wid = String(w.windowId);
+        const thumbnail = thumbMap[wid] || null;
+        if (!thumbnail) return null;
+        const appIcon = w.icon ? 'data:image/png;base64,' + w.icon : null;
+        return { id: 'window:' + wid + ':0', windowId: wid, name: w.owner, thumbnail, appIcon };
+      })
+    ]);
+    return result.filter(Boolean);
   } catch (err) {
     console.error('[get-sources] error:', err);
     return [];
@@ -206,11 +312,10 @@ ipcMain.on('toolbar-action', (e, action) => {
   if (action === 'chat') {
     shareState.chatOpen = !shareState.chatOpen;
     if (toolbarWin) toolbarWin.webContents.send('state-update', shareState);
-    if (win) win.webContents.send('chat-toggle');
-    // 显示/隐藏主窗口的互动区（把主窗口临时显示出来）
-    if (win) {
-      if (shareState.chatOpen) { win.show(); win.focus(); }
-      else { win.hide(); }
+    if (shareState.chatOpen) {
+      if (!chatWin) createChatPanel();
+    } else {
+      if (chatWin) { chatWin.close(); chatWin = null; }
     }
     return;
   }
