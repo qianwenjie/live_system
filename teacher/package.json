@@ -27,6 +27,11 @@
   },
   "devDependencies": {
     "electron": "^41.2.0",
-    "electron-builder": "^26.8.1"
+    "electron-builder": "^26.8.1",
+    "electron-rebuild": "^3.2.9",
+    "node-gyp": "^12.2.0"
+  },
+  "dependencies": {
+    "nan": "^2.26.2"
   }
 }

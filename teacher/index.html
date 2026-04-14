@@ -139,18 +139,25 @@
 
     <!-- 顶部状态栏 -->
     <header class="live-topbar">
-      <!-- 左：课节名称、直播老师、助教老师 -->
+      <!-- 左：课节名称、直播老师、助教老师 / 共享中提示 -->
       <div class="live-topbar-left">
-        <span class="live-course-name">{{ course.title }}</span>
-        <span class="live-person-badge">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
-          <span class="live-person-name">{{ course.teacher }}</span>
-        </span>
-        <span v-if="course.assistant" class="live-person-badge">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
-          <span class="live-person-name">{{ course.assistant }}</span>
-          <span class="live-person-tag">助教</span>
-        </span>
+        <template v-if="live.screenOn">
+          <i class="live-dot" style="background:#22c55e;flex-shrink:0"></i>
+          <span class="live-course-name">屏幕共享中 · {{ live.screenLabel || '桌面' }}</span>
+          <button class="live-screen-stop-btn" @click="toggleScreen()">停止共享</button>
+        </template>
+        <template v-else>
+          <span class="live-course-name">{{ course.title }}</span>
+          <span class="live-person-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
+            <span class="live-person-name">{{ course.teacher }}</span>
+          </span>
+          <span v-if="course.assistant" class="live-person-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
+            <span class="live-person-name">{{ course.assistant }}</span>
+            <span class="live-person-tag">助教</span>
+          </span>
+        </template>
       </div>
       <!-- 中：直播中、已直播时间、直播信号 -->
       <div class="live-topbar-center">
@@ -180,7 +187,7 @@
     <div class="live-body">
 
       <!-- 左：主舞台 -->
-      <div class="live-main" :class="!live.chatOpen ? 'chat-collapsed' : ''">
+      <div class="live-main" :class="[!live.chatOpen ? 'chat-collapsed' : '', live.screenOn ? 'sharing' : '']">
         <!-- 未共享时：课程信息 -->
         <div v-if="!live.screenOn" class="live-idle">
           <!-- 授课图标，开启麦克风时叠加蒙版+麦克风+音量 -->
@@ -228,7 +235,9 @@
           </div>
         </div>
         <!-- 共享中：全屏视频 -->
-        <video v-show="live.screenOn" ref="screenVideo" class="live-screen-video" autoplay muted playsinline></video>
+        <div v-show="live.screenOn" class="live-screen-wrap">
+          <video ref="screenVideo" class="live-screen-video" autoplay muted playsinline></video>
+        </div>
 
         <!-- 摄像头 PiP（可拖拽，仅摄像头开启时显示） -->
         <div v-if="live.camOn" class="live-pip"
@@ -355,7 +364,6 @@
         </div>
       </div>
       <div style="flex:1"></div>
-      <!-- 折叠聊天 -->
       <button class="live-tool-btn" @click="toggleChat()">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
           <path d="M20 2H4C2.9 2 2 2.9 2 4v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
@@ -372,6 +380,54 @@
         </svg>
         结束直播
       </button>
+    </div>
+
+    <!-- 共享屏幕选择面板 -->
+    <div v-if="ui.screenPanel" class="modal-mask" @click.self="ui.screenPanel=false">
+      <div class="screen-panel">
+        <div class="screen-panel-header">
+          <span>选择共享内容</span>
+          <button class="modal-close-btn" @click="ui.screenPanel=false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <!-- 整个桌面 -->
+        <div class="screen-panel-body">
+          <div class="screen-share-option" @click="startScreenShare('desktop','整个桌面',null)">
+            <div class="screen-share-icon">
+              <svg width="32" height="24" viewBox="0 0 40 30" fill="none"><rect width="40" height="30" rx="3" fill="#1a1a2e"/><rect x="4" y="4" width="32" height="18" rx="1" fill="#2d3748"/><rect x="14" y="25" width="12" height="2" rx="1" fill="#4a5568"/></svg>
+            </div>
+            <span class="screen-share-label">整个桌面</span>
+            <span class="screen-share-desc">共享整个屏幕内容</span>
+          </div>
+        </div>
+        <!-- 应用窗口列表（多选） -->
+        <div class="screen-app-section">
+          <div class="screen-app-title">
+            应用窗口
+            <span v-if="live.selectedApps.length" style="color:#1f8b73;font-weight:600;margin-left:8px">已选 {{ live.selectedApps.length }} 个</span>
+          </div>
+          <div v-if="live.appList === null" class="screen-app-empty">正在加载窗口列表...</div>
+          <div v-else-if="live.appList.length === 0" class="screen-app-empty">未检测到可共享的窗口，请确认已授权屏幕录制权限</div>
+          <div class="screen-app-grid">
+            <div v-for="app in (live.appList || [])" :key="app.id"
+              class="screen-app-item"
+              :class="{ selected: isAppSelected(app.id) }"
+              @click="toggleAppSelect(app)">
+              <img :src="app.thumbnail" class="screen-app-thumb" />
+              <span class="screen-app-name">{{ app.name }}</span>
+              <div v-if="isAppSelected(app.id)" class="screen-app-check">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- 底部确认按钮（仅选了应用时显示） -->
+        <div v-if="live.selectedApps.length" class="screen-panel-footer">
+          <button class="ghost" @click="live.selectedApps=[]">取消选择</button>
+          <button class="primary" @click="startAppShare()">开始共享选中窗口</button>
+        </div>
+      </div>
     </div>
 
     <!-- 结束确认弹窗 -->
@@ -408,6 +464,23 @@
                 :style="(device.mirror?'transform:scaleX(-1);':'')+( device.vbgId!=='none'?'display:none':'' )"></video>
               <canvas ref="modalBgCanvas" class="check-bg-canvas" :style="device.vbgId!=='none'?'display:block':''"></canvas>
               <div v-if="device.camStatus!=='ok'" class="check-video-empty"><span>摄像头未连接</span></div>
+            </div>
+            <!-- 虚拟背景 -->
+            <div class="check-section-title" style="margin-top:18px">虚拟背景</div>
+            <div class="check-vbg-row">
+              <button v-for="bg in checkBgs" :key="bg.id"
+                class="check-vbg-btn" :class="device.vbgId===bg.id?'active':''"
+                @click="selectCheckBg(bg.id)">
+                <span class="check-vbg-thumb">
+                  <template v-if="bg.id==='none'">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                  </template>
+                  <template v-else>
+                    <img :src="bg.thumb" style="width:100%;height:100%;object-fit:cover;border-radius:6px">
+                  </template>
+                </span>
+                <span class="check-vbg-label">{{ bg.label }}</span>
+              </button>
             </div>
           </div>
           <div class="check-right">

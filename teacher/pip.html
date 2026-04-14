@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; background:transparent; overflow:hidden; border-radius:12px; }
+video {
+  width:100%; height:100%; object-fit:cover;
+  border-radius:12px;
+  display:block;
+  -webkit-app-region:drag;
+}
+</style>
+</head>
+<body>
+<video id="pip" autoplay muted playsinline></video>
+<script>
+// 摄像头流通过 getUserMedia 直接获取（主进程传 deviceId 过来）
+if (window.pipAPI) {
+  window.pipAPI.onStream(function(data) {
+    var constraints = { video: data.deviceId ? { deviceId: data.deviceId } : true };
+    navigator.mediaDevices.getUserMedia(constraints).then(function(stream) {
+      document.getElementById('pip').srcObject = stream;
+    }).catch(function(){});
+  });
+}
+</script>
+</body>
+</html>

@@ -145,7 +145,7 @@
 
 /* 主内容区 */
 .live-body{flex:1;display:flex;min-height:0;overflow:hidden;align-items:stretch}
-.live-main{flex:1;position:relative;background:#1a1a2e;overflow:hidden;display:flex;align-items:center;justify-content:center;margin-right:320px;transition:margin-right .25s ease}
+.live-main{flex:1;position:relative;background:#1a1a2e;overflow:hidden;display:flex;align-items:center;justify-content:center;margin-right:320px;transition:margin-right .25s ease}.live-main.sharing{align-items:stretch;justify-content:stretch}
 .live-main.chat-collapsed{margin-right:0}
 
 /* 未共享占位 */
@@ -161,7 +161,7 @@
 .live-idle-device-item.on{color:rgba(255,255,255,.7)}
 
 /* 屏幕共享视频 */
-.live-screen-video{width:100%;height:100%;object-fit:contain;display:block}
+
 
 /* 摄像头 PiP */
 .live-pip{position:absolute;right:16px;top:16px;width:200px;height:120px;border-radius:12px;overflow:hidden;background:#000;border:2px solid rgba(255,255,255,.2);cursor:move;box-shadow:0 4px 20px rgba(0,0,0,.4);z-index:10}
@@ -216,6 +216,7 @@
 .live-tool-btn.off{color:#e53e3e;background:#fff1f1}
 .live-tool-btn.off:hover{background:#fee2e2}
 .live-tool-btn.active{background:#eaf7f2;color:#1f8b73}
+.live-tool-btn.screen-on{background:#eff6ff;color:#2563eb}
 .live-tool-divider{width:1px;height:24px;background:#e5e7eb;margin:0 4px}
 .live-end-btn-toolbar{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:999px;background:#fff1f1;border:none;color:#e53e3e;font-size:12px;font-weight:600;cursor:pointer;transition:.18s}
 .live-end-btn-toolbar:hover{background:#fee2e2}
@@ -276,3 +277,45 @@
 
 @media (max-width:1080px){.login-page,.check-grid,.live-grid,.course-grid,.studio-cards{grid-template-columns:1fr}.login-visual{min-height:480px}.gm-scene{width:440px;height:360px}.side-wrap{grid-template-columns:1fr 1fr}.pip{width:190px;height:114px}}
 @media (max-width:720px){.page{padding:16px}.login-card,.course-card,.panel,.modal{padding:18px;border-radius:20px}.gm-scene{width:320px;height:280px}.gm-play-body{width:100px;height:100px;border-radius:24px}.gm-play-tri{border-left-width:30px;border-top-width:20px;border-bottom-width:20px;margin-left:6px}.tab-row,.bg-grid,.side-wrap{grid-template-columns:1fr}.subtop,.live-top,.top-actions,.check-actions,.stage-bar,.chat-actions,.dialog-actions{flex-wrap:wrap}.course-card dl{grid-template-columns:1fr}.stage{min-height:420px}.pip{position:static;width:100%;height:180px;margin:16px 16px 0}.screen-empty{position:relative;min-height:260px}}
+
+/* 共享屏幕选择面板 */
+.screen-panel{background:#fff;border-radius:16px;width:640px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+.screen-panel-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0;font-size:15px;font-weight:600;color:#111}
+.screen-panel-body{padding:16px 20px 0;display:flex;gap:12px}
+.screen-app-section{padding:16px 20px 20px;overflow-y:auto;flex:1}
+.screen-app-title{font-size:13px;font-weight:600;color:#6b7280;margin-bottom:10px}
+.screen-app-empty{font-size:13px;color:#9ca3af;padding:12px 0}
+.screen-app-grid{display:flex;flex-wrap:wrap;gap:10px}
+.screen-app-item{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px;border-radius:10px;border:2px solid #e5e7eb;cursor:pointer;transition:.15s;width:130px}
+.screen-app-item:hover{border-color:#1f8b73;background:#f0faf7}
+.screen-app-thumb{width:120px;height:75px;border-radius:6px;object-fit:cover;background:#f1f5f9}
+.screen-app-name{font-size:11px;color:#374151;text-align:center;line-height:1.3;word-break:break-all;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.screen-tab-btn.active{background:#1f8b73;color:#fff}
+.screen-panel-body{padding:20px;display:flex;gap:12px}
+.screen-desktop-item{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px;border-radius:10px;border:2px solid #e5e7eb;cursor:pointer;transition:.15s;width:120px}
+.screen-desktop-item.active,.screen-desktop-item:hover{border-color:#1f8b73;background:#f0faf7}
+.screen-desktop-thumb{width:80px;height:56px;border-radius:6px;overflow:hidden;background:#1a1a2e;display:flex;align-items:center;justify-content:center}
+.screen-desktop-item span{font-size:12px;color:#374151;font-weight:500}
+.screen-app-item{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px;border-radius:10px;border:2px solid #e5e7eb;cursor:pointer;transition:.15s;width:110px}
+.screen-app-item:hover{border-color:#d1d5db;background:#f9fafb}
+.screen-app-item.selected{border-color:#1f8b73;background:#f0faf7}
+.screen-app-thumb{width:48px;height:48px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center}
+.screen-app-name{font-size:11px;color:#374151;text-align:center;line-height:1.3;word-break:break-all}
+.screen-app-check{position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:50%;background:#1f8b73;display:flex;align-items:center;justify-content:center}
+.screen-panel-footer{padding:14px 20px;border-top:1px solid #e5e7eb;display:flex;align-items:center;justify-content:flex-end;gap:12px}
+.screen-selected-tip{font-size:12px;color:#6b7280}
+.screen-start-btn{padding:9px 24px;border-radius:999px;border:none;background:#1f8b73;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.screen-start-btn:disabled{background:#d1d5db;cursor:not-allowed}
+.screen-start-btn:not(:disabled):hover{background:#17755f}
+
+/* 共享中提示条 */
+.live-screen-wrap{flex:1;min-height:0;display:flex;flex-direction:column;align-self:stretch}
+.live-screen-banner{display:flex;align-items:center;padding:6px 14px;background:#f0fdf4;border-bottom:1px solid #bbf7d0;font-size:12px;color:#166534;font-weight:500;flex-shrink:0}
+.live-screen-stop-btn{margin-left:8px;padding:3px 10px;border-radius:999px;border:none;background:#ef4444;color:#fff;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0}
+.live-screen-stop-btn:hover{background:#dc2626}
+.live-screen-video{flex:1;width:100%;height:100%;object-fit:contain;background:#000}
+.screen-share-option{display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px 20px;border-radius:12px;border:2px solid #e5e7eb;cursor:pointer;transition:.15s;flex:1;text-align:center}
+.screen-share-option:hover{border-color:#1f8b73;background:#f0faf7}
+.screen-share-icon{width:64px;height:48px;display:flex;align-items:center;justify-content:center}
+.screen-share-label{font-size:14px;font-weight:600;color:#111}
+.screen-share-desc{font-size:12px;color:#6b7280}
