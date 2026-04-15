@@ -5,24 +5,77 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 html, body { width:100%; height:100%; background:transparent; overflow:hidden; border-radius:12px; }
-video {
-  width:100%; height:100%; object-fit:cover;
-  border-radius:12px;
-  display:block;
+#pip, #bgCanvas {
+  position:absolute; top:0; left:0; width:100%; height:100%;
+  object-fit:cover; border-radius:12px; display:block;
   -webkit-app-region:drag;
 }
+#pip { z-index:1; }
+#bgCanvas { z-index:2; display:none; }
 </style>
 </head>
 <body>
 <video id="pip" autoplay muted playsinline></video>
+<canvas id="bgCanvas"></canvas>
 <script>
-// 摄像头流通过 getUserMedia 直接获取（主进程传 deviceId 过来）
+var stream = null;
+var currentBg = 'none';
+var bgImages = {};
+var segRaf = null;
+
+var BG_URLS = { meeting:'bg-meeting.jpg', study:'bg-study.jpg', living:'bg-living.jpg' };
+Object.keys(BG_URLS).forEach(function(k) {
+  var img = new Image(); img.src = BG_URLS[k]; bgImages[k] = img;
+});
+
+function startCamera(deviceId) {
+  var constraints = { video: deviceId ? { deviceId: { exact: deviceId } } : true };
+  navigator.mediaDevices.getUserMedia(constraints).then(function(s) {
+    stream = s;
+    document.getElementById('pip').srcObject = s;
+    if (currentBg !== 'none') startBgCanvas();
+  }).catch(function(){});
+}
+
+function startBgCanvas() {
+  var video = document.getElementById('pip');
+  var canvas = document.getElementById('bgCanvas');
+  canvas.style.display = 'block';
+  document.getElementById('pip').style.display = 'none';
+
+  function draw() {
+    if (!stream) return;
+    canvas.width = video.videoWidth || 320;
+    canvas.height = video.videoHeight || 240;
+    var ctx = canvas.getContext('2d');
+    if (currentBg !== 'none' && bgImages[currentBg] && bgImages[currentBg].complete) {
+      ctx.drawImage(bgImages[currentBg], 0, 0, canvas.width, canvas.height);
+    } else {
+      ctx.fillStyle = '#1a1a2e';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.save();
+    ctx.scale(-1, 1); ctx.translate(-canvas.width, 0);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.restore();
+    segRaf = requestAnimationFrame(draw);
+  }
+  if (segRaf) cancelAnimationFrame(segRaf);
+  draw();
+}
+
+function stopBgCanvas() {
+  if (segRaf) { cancelAnimationFrame(segRaf); segRaf = null; }
+  document.getElementById('bgCanvas').style.display = 'none';
+  document.getElementById('pip').style.display = 'block';
+}
+
 if (window.pipAPI) {
-  window.pipAPI.onStream(function(data) {
-    var constraints = { video: data.deviceId ? { deviceId: data.deviceId } : true };
-    navigator.mediaDevices.getUserMedia(constraints).then(function(stream) {
-      document.getElementById('pip').srcObject = stream;
-    }).catch(function(){});
+  window.pipAPI.onStream(function(data) { startCamera(data.deviceId); });
+  window.pipAPI.onVbgChange(function(bgId) {
+    currentBg = bgId;
+    if (bgId === 'none') stopBgCanvas();
+    else startBgCanvas();
   });
 }
 </script>

@@ -56,10 +56,11 @@ function createBorder(data) {
 
 function createToolbar() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  // 窗口加高到 320px，透明区域用于显示自定义下拉面板
   toolbarWin = new BrowserWindow({
-    width: 620, height: 60,
-    x: Math.round((width - 620) / 2),
-    y: height - 80,
+    width: 660, height: 320,
+    x: Math.round((width - 660) / 2),
+    y: height - 320 - 14,
     frame: false, transparent: true,
     alwaysOnTop: true, resizable: false,
     skipTaskbar: true,
@@ -292,6 +293,12 @@ ipcMain.on('screen-share-stop', () => {
 
 // IPC: 工具条按钮操作
 ipcMain.on('toolbar-action', (e, action) => {
+  // 虚拟背景切换
+  if (action.startsWith('vbg:')) {
+    const bgId = action.slice(4);
+    if (pipWin) pipWin.webContents.send('vbg-change', bgId);
+    return;
+  }
   if (action === 'stop') {
     stopShareMode();
     if (win) win.webContents.send('toolbar-action', 'stop');
@@ -341,6 +348,11 @@ ipcMain.on('show-device-menu', (e, type, devices, currentId) => {
   const menu = Menu.buildFromTemplate(template);
   const win = BrowserWindow.fromWebContents(e.sender);
   menu.popup({ window: win });
+});
+
+// IPC: 虚拟背景切换，转发给 pip 窗口
+ipcMain.on('vbg-change', (e, bgId) => {
+  if (pipWin) pipWin.webContents.send('vbg-change', bgId);
 });
 
 app.whenReady().then(() => {
