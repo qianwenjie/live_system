@@ -1,8 +1,8 @@
-const { app, BrowserWindow, ipcMain, session, desktopCapturer, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, session, desktopCapturer, screen, Menu } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 
-let win, toolbarWin, pipWin;
+let win, toolbarWin, pipWin, chatWin;
 let borderProcs = [];
 let liveSeconds = 0, networkSignal = 3, timerInterval = null;
 let shareState = { micOn: false, camOn: false, chatOpen: false };
@@ -94,6 +94,26 @@ function createPip() {
   pipWin.on('closed', () => { pipWin = null; });
 }
 
+function createChatPanel() {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const panelW = 320, panelH = Math.min(600, height - 100);
+  chatWin = new BrowserWindow({
+    width: panelW, height: panelH,
+    x: width - panelW - 12, y: Math.round((height - panelH) / 2),
+    frame: false, transparent: true,
+    alwaysOnTop: true, resizable: false, skipTaskbar: true,
+    webPreferences: {
+      nodeIntegration: false, contextIsolation: true,
+      preload: path.join(__dirname, 'preload-toolbar.js')
+    }
+  });
+  chatWin.loadFile(path.join(__dirname, 'chat-panel.html'));
+  chatWin.setAlwaysOnTop(true, 'screen-saver');
+  chatWin.on('closed', () => {
+    chatWin = null; shareState.chatOpen = false;
+    if (toolbarWin) toolbarWin.webContents.send('state-update', shareState);
+  });
+}
 
 function activateWindows(windowIds) {
   if (!windowIds || !windowIds.length) return;
@@ -136,6 +156,7 @@ function stopShareMode() {
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   if (toolbarWin) { toolbarWin.close(); toolbarWin = null; }
   if (pipWin) { pipWin.close(); pipWin = null; }
+  if (chatWin) { chatWin.close(); chatWin = null; }
   borderProcs.forEach(p => { try { p.kill(); } catch(e) {} });
   borderProcs = [];
   if (win) { win.show(); win.focus(); }
@@ -293,18 +314,32 @@ ipcMain.on('toolbar-action', (e, action) => {
   if (action === 'chat') {
     shareState.chatOpen = !shareState.chatOpen;
     if (toolbarWin) toolbarWin.webContents.send('state-update', shareState);
-    // 通知主窗口展开/收起侧边互动区
-    if (win) {
-      if (shareState.chatOpen) { win.show(); }
-      win.webContents.send('toolbar-action', 'chat');
+    if (shareState.chatOpen) {
+      if (!chatWin) createChatPanel();
+    } else {
+      if (chatWin) { chatWin.close(); chatWin = null; }
     }
     return;
   }
   if (action === 'virtual-bg') {
-    // 通知主窗口打开虚拟背景设置
     if (win) { win.show(); win.webContents.send('toolbar-action', 'virtual-bg'); }
     return;
   }
+});
+
+// IPC: 原生设备选择菜单
+ipcMain.handle('show-device-menu', (e, type, devices, currentId) => {
+  const template = devices.map(d => ({
+    label: d.label || (type === 'mic' ? '麦克风' : '摄像头'),
+    type: 'radio',
+    checked: d.id === currentId,
+    click: () => {
+      if (toolbarWin) toolbarWin.webContents.send('device-selected', type, d.id);
+    }
+  }));
+  if (!template.length) template.push({ label: '未检测到设备', enabled: false });
+  const menu = Menu.buildFromTemplate(template);
+  menu.popup({ window: toolbarWin });
 });
 
 app.whenReady().then(() => {

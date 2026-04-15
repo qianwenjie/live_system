@@ -69,30 +69,6 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
 }
 .tool-arrow:hover { background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.7); }
 
-/* 下拉菜单 */
-.dropdown {
-  display:none; position:absolute; bottom:58px; left:50%;
-  transform:translateX(-50%);
-  background:rgba(30,30,30,0.95); backdrop-filter:blur(16px);
-  border:1px solid rgba(255,255,255,0.12); border-radius:10px;
-  padding:6px 0; min-width:180px; z-index:100;
-  box-shadow:0 8px 24px rgba(0,0,0,0.5);
-}
-.dropdown.show { display:block; }
-.dropdown-title {
-  padding:6px 14px 4px; font-size:10px; color:rgba(255,255,255,0.35);
-  text-transform:uppercase; letter-spacing:.5px;
-}
-.dropdown-item {
-  display:flex; align-items:center; gap:8px;
-  padding:7px 14px; font-size:12px; color:rgba(255,255,255,0.8);
-  cursor:pointer; transition:.1s; white-space:nowrap;
-}
-.dropdown-item:hover { background:rgba(255,255,255,0.08); }
-.dropdown-item.active { color:#4ade80; }
-.dropdown-item .check { width:14px; text-align:center; font-size:12px; }
-.dropdown-sep { height:1px; background:rgba(255,255,255,0.08); margin:4px 0; }
-
 /* 互动区按钮 */
 .chat-btn {
   display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -148,7 +124,7 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
   <div class="bar-divider"></div>
 
   <!-- 麦克风 + 箭头 -->
-  <div class="tool-group" style="position:relative">
+  <div class="tool-group">
     <button class="tool-btn" id="micBtn" onclick="toggle('mic')">
       <svg width="16" height="22" viewBox="0 0 16 24">
         <defs><clipPath id="micClip"><rect x="4" y="0.5" width="8" height="13" rx="4"/></clipPath></defs>
@@ -161,17 +137,13 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
       </svg>
       <span id="micLabel">麦克风</span>
     </button>
-    <button class="tool-arrow" onclick="toggleDropdown('micDropdown',event)">
+    <button class="tool-arrow" onclick="showDeviceMenu('mic')">
       <svg width="8" height="5" viewBox="0 0 8 5"><path d="M0 0l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
     </button>
-    <div class="dropdown" id="micDropdown">
-      <div class="dropdown-title">选择麦克风</div>
-      <div id="micList"></div>
-    </div>
   </div>
 
   <!-- 摄像头 + 箭头 -->
-  <div class="tool-group" style="position:relative">
+  <div class="tool-group">
     <button class="tool-btn" id="camBtn" onclick="toggle('cam')">
       <svg width="22" height="17" viewBox="0 0 1024 1024">
         <path d="M943.488 260a32.008 32.008 0 0 0-32.48 0.864L800 330.368V288c0-52.928-43.072-96-96-96H160c-52.928 0-96 43.072-96 96v448c0 52.928 43.072 96 96 96h544c52.928 0 96-43.072 96-96v-38.88l111.648 66.368A31.818 31.818 0 0 0 928 768a31.938 31.938 0 0 0 15.808-4.192A32.001 32.001 0 0 0 960 736V288a31.947 31.947 0 0 0-16.512-28z" fill="currentColor"/>
@@ -179,17 +151,9 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
       </svg>
       <span id="camLabel">摄像头</span>
     </button>
-    <button class="tool-arrow" onclick="toggleDropdown('camDropdown',event)">
+    <button class="tool-arrow" onclick="showDeviceMenu('cam')">
       <svg width="8" height="5" viewBox="0 0 8 5"><path d="M0 0l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
     </button>
-    <div class="dropdown" id="camDropdown">
-      <div class="dropdown-title">选择摄像头</div>
-      <div id="camList"></div>
-      <div class="dropdown-sep"></div>
-      <div class="dropdown-item" onclick="toggle('virtual-bg');closeAllDropdowns()">
-        <span class="check"></span>虚拟背景设置
-      </div>
-    </div>
   </div>
 
   <div class="bar-divider"></div>
@@ -285,52 +249,28 @@ function updateShareLabel(label, icons) {
   }
 }
 
-/* 下拉菜单 */
-function toggleDropdown(id, e) {
-  e && e.stopPropagation();
-  var el = document.getElementById(id);
-  var showing = el.classList.contains('show');
-  closeAllDropdowns();
-  if (!showing) {
-    el.classList.add('show');
-    if (id === 'micDropdown') loadMicList();
-    if (id === 'camDropdown') loadCamList();
+/* 原生设备菜单 */
+async function showDeviceMenu(type) {
+  if (!window.toolbarAPI) return;
+  var devices = await navigator.mediaDevices.enumerateDevices();
+  var list;
+  if (type === 'mic') {
+    list = devices.filter(function(d) { return d.kind === 'audioinput'; })
+      .map(function(d) { return { id: d.deviceId, label: d.label || '麦克风 ' + (d.deviceId.slice(0,4)) }; });
+  } else {
+    list = devices.filter(function(d) { return d.kind === 'videoinput'; })
+      .map(function(d) { return { id: d.deviceId, label: d.label || '摄像头 ' + (d.deviceId.slice(0,4)) }; });
+    list.push({ id: '__vbg__', label: '虚拟背景设置…' });
   }
-}
-function closeAllDropdowns() {
-  document.querySelectorAll('.dropdown').forEach(function(d) { d.classList.remove('show'); });
-}
-document.addEventListener('click', closeAllDropdowns);
-
-function loadMicList() {
-  navigator.mediaDevices.enumerateDevices().then(function(devices) {
-    var mics = devices.filter(function(d) { return d.kind === 'audioinput'; });
-    var list = document.getElementById('micList');
-    list.innerHTML = '';
-    mics.forEach(function(mic) {
-      var item = document.createElement('div');
-      item.className = 'dropdown-item' + (mic.deviceId === currentMicId ? ' active' : '');
-      var check = mic.deviceId === currentMicId ? '✓' : '';
-      item.innerHTML = '<span class="check">' + check + '</span>' + (mic.label || '麦克风');
-      item.onclick = function() { currentMicId = mic.deviceId; closeAllDropdowns(); };
-      list.appendChild(item);
-    });
-  });
+  var currentId = type === 'mic' ? currentMicId : currentCamId;
+  window.toolbarAPI.showDeviceMenu(type, list, currentId);
 }
 
-function loadCamList() {
-  navigator.mediaDevices.enumerateDevices().then(function(devices) {
-    var cams = devices.filter(function(d) { return d.kind === 'videoinput'; });
-    var list = document.getElementById('camList');
-    list.innerHTML = '';
-    cams.forEach(function(cam) {
-      var item = document.createElement('div');
-      item.className = 'dropdown-item' + (cam.deviceId === currentCamId ? ' active' : '');
-      var check = cam.deviceId === currentCamId ? '✓' : '';
-      item.innerHTML = '<span class="check">' + check + '</span>' + (cam.label || '摄像头');
-      item.onclick = function() { currentCamId = cam.deviceId; closeAllDropdowns(); };
-      list.appendChild(item);
-    });
+if (window.toolbarAPI && window.toolbarAPI.onDeviceSelected) {
+  window.toolbarAPI.onDeviceSelected(function(type, id) {
+    if (id === '__vbg__') { toggle('virtual-bg'); return; }
+    if (type === 'mic') currentMicId = id;
+    else currentCamId = id;
   });
 }
 

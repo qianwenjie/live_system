@@ -4,99 +4,53 @@
 <meta charset="UTF-8">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
+html, body { width:100%; height:100%; background:transparent; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif; }
 
 .panel {
   width:100%; height:100%;
-  background:rgba(20,20,20,0.92);
-  backdrop-filter:blur(16px);
+  background:#fff;
   border-radius:14px;
-  border:1px solid rgba(255,255,255,0.12);
-  display:flex; flex-direction:column;
+  border:1px solid #e5e7eb;
+  box-shadow:0 8px 32px rgba(0,0,0,0.18);
+  display:flex; flex-direction:column; overflow:hidden;
   animation:slideIn .2s cubic-bezier(.32,1,.32,1);
-  overflow:hidden;
 }
 @keyframes slideIn { from{transform:translateX(20px);opacity:0} to{transform:translateX(0);opacity:1} }
 
+/* 拖拽标题栏 */
 .panel-header {
   display:flex; align-items:center; justify-content:space-between;
-  padding:14px 16px 12px;
-  border-bottom:1px solid rgba(255,255,255,0.08);
-  -webkit-app-region:drag;
+  padding:10px 14px 8px;
+  border-bottom:1px solid #e5e7eb;
+  -webkit-app-region:drag; flex-shrink:0;
 }
 .panel-header * { -webkit-app-region:no-drag; }
-.panel-title { font-size:13px; font-weight:600; color:#fff; }
+.panel-title { font-size:13px; font-weight:600; color:#1a1a1a; }
 .close-btn {
-  width:24px; height:24px; border-radius:6px; border:none;
-  background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.6);
-  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  width:22px; height:22px; border-radius:6px; border:none;
+  background:#f3f4f6; color:#666; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
 }
-.close-btn:hover { background:rgba(255,255,255,0.15); }
+.close-btn:hover { background:#e5e7eb; }
 
-.tab-bar {
-  display:flex; padding:8px 12px 0; gap:4px;
+/* 照抄主窗口 t-chat-head */
+.t-chat-head {
+  padding:8px 12px; border-bottom:1px solid #e5e7eb;
+  background:#fff; flex-shrink:0;
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
 }
-.tab {
-  flex:1; padding:6px 0; border-radius:6px 6px 0 0; border:none;
-  background:transparent; color:rgba(255,255,255,0.4);
-  font-size:12px; cursor:pointer; transition:.15s;
+.t-chat-tabs { display:flex; gap:4px; }
+.t-chat-tab {
+  padding:5px 10px; border-radius:8px; border:none;
+  background:transparent; font-size:13px; color:#666;
+  cursor:pointer; transition:.15s; white-space:nowrap;
 }
-.tab.active { background:rgba(255,255,255,0.08); color:#fff; font-weight:600; }
-
-.msg-list {
-  flex:1; overflow-y:auto; padding:10px 12px; display:flex; flex-direction:column; gap:8px;
+.t-chat-tab.active { background:#eaf7f2; color:#1f8b73; font-weight:600; }
+.t-mute-all-btn {
+  padding:4px 10px; border-radius:8px; border:1px solid #e5e7eb;
+  background:#fff; font-size:12px; color:#555; cursor:pointer; white-space:nowrap; flex-shrink:0;
 }
-.msg-list::-webkit-scrollbar { width:4px; }
-.msg-list::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.15); border-radius:2px; }
-
-.msg-item { display:flex; flex-direction:column; gap:2px; }
-.msg-name { font-size:11px; color:rgba(255,255,255,0.4); }
-.msg-bubble {
-  background:rgba(255,255,255,0.08); border-radius:8px;
-  padding:6px 10px; font-size:12px; color:rgba(255,255,255,0.85);
-  line-height:1.5; word-break:break-all; max-width:100%;
-}
-.msg-item.self .msg-bubble { background:rgba(31,139,115,0.3); color:#fff; }
-
-.input-area {
-  padding:10px 12px;
-  border-top:1px solid rgba(255,255,255,0.08);
-  display:flex; gap:8px; align-items:flex-end;
-}
-.msg-input {
-  flex:1; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12);
-  border-radius:8px; padding:7px 10px; color:#fff; font-size:12px;
-  resize:none; outline:none; line-height:1.4; max-height:72px;
-}
-.msg-input::placeholder { color:rgba(255,255,255,0.3); }
-.send-btn {
-  padding:7px 12px; border-radius:8px; border:none;
-  background:#1f8b73; color:#fff; font-size:12px; font-weight:600;
-  cursor:pointer; white-space:nowrap; flex-shrink:0;
-}
-.send-btn:hover { background:#17755f; }
-
-/* 学生列表 */
-.student-list { flex:1; overflow-y:auto; padding:8px 12px; display:flex; flex-direction:column; gap:4px; }
-.student-item {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:8px 10px; border-radius:8px; background:rgba(255,255,255,0.05);
-}
-.student-name { font-size:12px; color:rgba(255,255,255,0.8); }
-.mute-btn {
-  padding:3px 8px; border-radius:4px; border:1px solid rgba(255,255,255,0.2);
-  background:transparent; color:rgba(255,255,255,0.5); font-size:11px; cursor:pointer;
-}
-.mute-btn:hover { background:rgba(255,255,255,0.1); }
-.mute-all-bar {
-  padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.08);
-  display:flex; justify-content:flex-end;
-}
-.mute-all-btn {
-  padding:5px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.2);
-  background:transparent; color:rgba(255,255,255,0.6); font-size:11px; cursor:pointer;
-}
-.mute-all-btn:hover { background:rgba(255,255,255,0.08); }
+.t-mute-all-btn:hover { border-color:#fca5a5; color:#e53e3e; }
 </style>
 </head>
 <body>
@@ -110,78 +64,16 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
       </svg>
     </button>
   </div>
-
-  <div class="tab-bar">
-    <button class="tab active" id="tabChat" onclick="switchTab('chat')">聊天</button>
-    <button class="tab" id="tabStudents" onclick="switchTab('students')">学生列表</button>
+  <div class="t-chat-head">
+    <div class="t-chat-tabs">
+      <button class="t-chat-tab active" id="tabChat" onclick="switchTab('chat')">互动</button>
+      <button class="t-chat-tab" id="tabStudents" onclick="switchTab('students')">学生 (<span id="studentCount">3</span>)</button>
+    </div>
+    <button class="t-mute-all-btn" id="muteAllBtn" onclick="toggleAllMute()">全体禁言</button>
   </div>
-
-  <!-- 聊天 -->
-  <div id="chatView" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
-    <div class="msg-list" id="msgList">
-      <div class="msg-item">
-        <span class="msg-name">张同学</span>
-        <div class="msg-bubble">老师好！</div>
-      </div>
-      <div class="msg-item">
-        <span class="msg-name">李同学</span>
-        <div class="msg-bubble">今天讲什么内容？</div>
-      </div>
-      <div class="msg-item self">
-        <span class="msg-name">我（老师）</span>
-        <div class="msg-bubble">大家好，今天讲第三章</div>
-      </div>
-    </div>
-    <div class="input-area">
-      <textarea class="msg-input" id="msgInput" placeholder="发送消息..." rows="1"
-        onkeydown="onKey(event)"></textarea>
-      <button class="send-btn" onclick="sendMsg()">发送</button>
-    </div>
-  </div>
-
-  <!-- 学生列表 -->
-  <div id="studentsView" style="display:none;flex-direction:column;flex:1;overflow:hidden">
-    <div class="mute-all-bar">
-      <button class="mute-all-btn" onclick="muteAll()">全体静音</button>
-    </div>
-    <div class="student-list" id="studentList">
-      <div class="student-item"><span class="student-name">张同学</span><button class="mute-btn">静音</button></div>
-      <div class="student-item"><span class="student-name">李同学</span><button class="mute-btn">静音</button></div>
-      <div class="student-item"><span class="student-name">王同学</span><button class="mute-btn">静音</button></div>
-    </div>
-  </div>
+  <div id="chatView" style="display:flex;flex-direction:column;flex:1;overflow:hidden"></div>
+  <div id="studentsView" style="display:none;flex-direction:column;flex:1;overflow:hidden"></div>
 </div>
-
-<script>
-function closePanel() {
-  if (window.toolbarAPI) window.toolbarAPI.sendAction('chat');
-}
-
-function switchTab(tab) {
-  document.getElementById('tabChat').classList.toggle('active', tab === 'chat');
-  document.getElementById('tabStudents').classList.toggle('active', tab === 'students');
-  document.getElementById('chatView').style.display = tab === 'chat' ? 'flex' : 'none';
-  document.getElementById('studentsView').style.display = tab === 'students' ? 'flex' : 'none';
-}
-
-function sendMsg() {
-  var input = document.getElementById('msgInput');
-  var text = input.value.trim();
-  if (!text) return;
-  var list = document.getElementById('msgList');
-  var item = document.createElement('div');
-  item.className = 'msg-item self';
-  item.innerHTML = '<span class="msg-name">我（老师）</span><div class="msg-bubble">' + text + '</div>';
-  list.appendChild(item);
-  list.scrollTop = list.scrollHeight;
-  input.value = '';
-}
-
-function onKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
-}
-
-function muteAll() {}
-</script>
+<script src="chat-panel-logic.js"></script>
 </body>
 </html>
