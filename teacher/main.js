@@ -328,7 +328,7 @@ ipcMain.on('toolbar-action', (e, action) => {
 });
 
 // IPC: 原生设备选择菜单
-ipcMain.handle('show-device-menu', (e, type, devices, currentId) => {
+ipcMain.on('show-device-menu', (e, type, devices, currentId) => {
   const template = devices.map(d => ({
     label: d.label || (type === 'mic' ? '麦克风' : '摄像头'),
     type: 'radio',
@@ -339,7 +339,8 @@ ipcMain.handle('show-device-menu', (e, type, devices, currentId) => {
   }));
   if (!template.length) template.push({ label: '未检测到设备', enabled: false });
   const menu = Menu.buildFromTemplate(template);
-  menu.popup({ window: toolbarWin });
+  const win = BrowserWindow.fromWebContents(e.sender);
+  menu.popup({ window: win });
 });
 
 app.whenReady().then(() => {

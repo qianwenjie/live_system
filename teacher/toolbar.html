@@ -256,10 +256,10 @@ async function showDeviceMenu(type) {
   var list;
   if (type === 'mic') {
     list = devices.filter(function(d) { return d.kind === 'audioinput'; })
-      .map(function(d) { return { id: d.deviceId, label: d.label || '麦克风 ' + (d.deviceId.slice(0,4)) }; });
+      .map(function(d) { return { id: d.deviceId, label: d.label || '麦克风' }; });
   } else {
     list = devices.filter(function(d) { return d.kind === 'videoinput'; })
-      .map(function(d) { return { id: d.deviceId, label: d.label || '摄像头 ' + (d.deviceId.slice(0,4)) }; });
+      .map(function(d) { return { id: d.deviceId, label: d.label || '摄像头' }; });
     list.push({ id: '__vbg__', label: '虚拟背景设置…' });
   }
   var currentId = type === 'mic' ? currentMicId : currentCamId;
