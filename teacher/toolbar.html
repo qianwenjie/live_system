@@ -21,10 +21,10 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
 
 .bar-divider { width:1px; height:24px; background:rgba(255,255,255,0.15); margin:0 2px; flex-shrink:0; }
 
-/* 统一 item 高度，垂直居中 */
+/* 统一 item：固定高度，flex-end 让底部标签对齐 */
 .bar-item {
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:2px; height:52px;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+  gap:2px; height:44px; padding-bottom:2px;
 }
 
 /* 信号 */
@@ -37,27 +37,61 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
 .timer { font-size:13px; font-weight:600; color:#fff; font-variant-numeric:tabular-nums; letter-spacing:.5px; line-height:1; }
 
 /* 共享标识 */
-.share-label { font-size:11px; color:#4ade80; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:110px; line-height:1; }
+.share-label { font-size:11px; color:#4ade80; font-weight:600; white-space:nowrap; line-height:1; }
 
-/* 应用图标列表（多应用时） */
+/* 应用图标列表 */
 .app-icons { display:flex; align-items:center; gap:3px; }
-.app-icon-img { width:18px; height:18px; border-radius:4px; object-fit:contain; }
+.app-icon-img { width:20px; height:20px; border-radius:4px; object-fit:contain; }
 .app-icon-more { font-size:10px; color:rgba(255,255,255,0.5); }
 
-/* 工具按钮 */
+/* 工具按钮组（按钮+箭头） */
+.tool-group { display:flex; align-items:center; height:40px; }
+
 .tool-btn {
   display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:3px; padding:0 10px; border-radius:8px; border:none;
+  gap:3px; padding:0 8px; border-radius:8px 0 0 8px; border:none;
   background:transparent; color:rgba(255,255,255,0.75);
   font-size:10px; cursor:pointer; transition:.15s;
-  height:40px; min-width:48px; white-space:nowrap;
+  height:40px; min-width:44px; white-space:nowrap;
 }
 .tool-btn:hover { background:rgba(255,255,255,0.1); }
 .tool-btn.off { color:#ef4444; }
+.tool-btn.no-arrow { border-radius:8px; }
 .tool-btn svg { flex-shrink:0; display:block; }
 
-/* 麦克风音量条（SVG 内部绿色填充） */
-.mic-svg-wrap { position:relative; width:16px; height:22px; }
+/* 下拉箭头按钮 */
+.tool-arrow {
+  display:flex; align-items:center; justify-content:center;
+  width:18px; height:40px; border:none; border-radius:0 8px 8px 0;
+  background:transparent; color:rgba(255,255,255,0.4);
+  cursor:pointer; transition:.15s; padding:0;
+  border-left:1px solid rgba(255,255,255,0.1);
+}
+.tool-arrow:hover { background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.7); }
+
+/* 下拉菜单 */
+.dropdown {
+  display:none; position:absolute; bottom:58px; left:50%;
+  transform:translateX(-50%);
+  background:rgba(30,30,30,0.95); backdrop-filter:blur(16px);
+  border:1px solid rgba(255,255,255,0.12); border-radius:10px;
+  padding:6px 0; min-width:180px; z-index:100;
+  box-shadow:0 8px 24px rgba(0,0,0,0.5);
+}
+.dropdown.show { display:block; }
+.dropdown-title {
+  padding:6px 14px 4px; font-size:10px; color:rgba(255,255,255,0.35);
+  text-transform:uppercase; letter-spacing:.5px;
+}
+.dropdown-item {
+  display:flex; align-items:center; gap:8px;
+  padding:7px 14px; font-size:12px; color:rgba(255,255,255,0.8);
+  cursor:pointer; transition:.1s; white-space:nowrap;
+}
+.dropdown-item:hover { background:rgba(255,255,255,0.08); }
+.dropdown-item.active { color:#4ade80; }
+.dropdown-item .check { width:14px; text-align:center; font-size:12px; }
+.dropdown-sep { height:1px; background:rgba(255,255,255,0.08); margin:4px 0; }
 
 /* 互动区按钮 */
 .chat-btn {
@@ -97,7 +131,7 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
   <div class="bar-divider"></div>
 
   <!-- 共享标识 -->
-  <div class="bar-item" style="min-width:60px;max-width:130px;align-items:flex-start">
+  <div class="bar-item" id="shareSection" style="min-width:40px;align-items:center">
     <div class="app-icons" id="appIconsWrap" style="display:none"></div>
     <span class="share-label" id="shareLabel">共享中</span>
     <span class="bar-label">屏幕共享</span>
@@ -113,34 +147,50 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
 
   <div class="bar-divider"></div>
 
-  <!-- 麦克风 -->
-  <button class="tool-btn" id="micBtn" onclick="toggle('mic')">
-    <svg width="16" height="22" viewBox="0 0 16 24">
-      <defs>
-        <clipPath id="micClip">
-          <rect x="4" y="0.5" width="8" height="13" rx="4"/>
-        </clipPath>
-      </defs>
-      <!-- 麦克风轮廓 -->
-      <rect x="4" y="0.5" width="8" height="13" rx="4" fill="currentColor"/>
-      <!-- 绿色音量填充，从底部往上 -->
-      <rect id="micLevelRect" x="4" y="13.5" width="8" height="0" fill="#22c55e" clip-path="url(#micClip)"/>
-      <path d="M1 10a7 7 0 0 0 14 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
-      <line x1="8" y1="17" x2="8" y2="20.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      <line x1="4" y1="20.5" x2="12" y2="20.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      <line id="micSlash" x1="-4" y1="1" x2="22" y2="23" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round" style="display:none"/>
-    </svg>
-    <span id="micLabel">开启麦克风</span>
-  </button>
+  <!-- 麦克风 + 箭头 -->
+  <div class="tool-group" style="position:relative">
+    <button class="tool-btn" id="micBtn" onclick="toggle('mic')">
+      <svg width="16" height="22" viewBox="0 0 16 24">
+        <defs><clipPath id="micClip"><rect x="4" y="0.5" width="8" height="13" rx="4"/></clipPath></defs>
+        <rect x="4" y="0.5" width="8" height="13" rx="4" fill="currentColor"/>
+        <rect id="micLevelRect" x="4" y="13.5" width="8" height="0" fill="#22c55e" clip-path="url(#micClip)"/>
+        <path d="M1 10a7 7 0 0 0 14 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <line x1="8" y1="17" x2="8" y2="20.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="4" y1="20.5" x2="12" y2="20.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line id="micSlash" x1="-4" y1="1" x2="22" y2="23" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round" style="display:none"/>
+      </svg>
+      <span id="micLabel">麦克风</span>
+    </button>
+    <button class="tool-arrow" onclick="toggleDropdown('micDropdown',event)">
+      <svg width="8" height="5" viewBox="0 0 8 5"><path d="M0 0l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+    </button>
+    <div class="dropdown" id="micDropdown">
+      <div class="dropdown-title">选择麦克风</div>
+      <div id="micList"></div>
+    </div>
+  </div>
 
-  <!-- 摄像头 -->
-  <button class="tool-btn" id="camBtn" onclick="toggle('cam')">
-    <svg width="22" height="17" viewBox="0 0 1024 1024">
-      <path id="camPath" d="M943.488 260a32.008 32.008 0 0 0-32.48 0.864L800 330.368V288c0-52.928-43.072-96-96-96H160c-52.928 0-96 43.072-96 96v448c0 52.928 43.072 96 96 96h544c52.928 0 96-43.072 96-96v-38.88l111.648 66.368A31.818 31.818 0 0 0 928 768a31.938 31.938 0 0 0 15.808-4.192A32.001 32.001 0 0 0 960 736V288a31.947 31.947 0 0 0-16.512-28z" fill="currentColor"/>
-      <line id="camSlash" x1="80" y1="80" x2="944" y2="944" stroke="#ef4444" stroke-width="100" stroke-linecap="round" style="display:none"/>
-    </svg>
-    <span id="camLabel">开启摄像头</span>
-  </button>
+  <!-- 摄像头 + 箭头 -->
+  <div class="tool-group" style="position:relative">
+    <button class="tool-btn" id="camBtn" onclick="toggle('cam')">
+      <svg width="22" height="17" viewBox="0 0 1024 1024">
+        <path d="M943.488 260a32.008 32.008 0 0 0-32.48 0.864L800 330.368V288c0-52.928-43.072-96-96-96H160c-52.928 0-96 43.072-96 96v448c0 52.928 43.072 96 96 96h544c52.928 0 96-43.072 96-96v-38.88l111.648 66.368A31.818 31.818 0 0 0 928 768a31.938 31.938 0 0 0 15.808-4.192A32.001 32.001 0 0 0 960 736V288a31.947 31.947 0 0 0-16.512-28z" fill="currentColor"/>
+        <line id="camSlash" x1="80" y1="80" x2="944" y2="944" stroke="#ef4444" stroke-width="100" stroke-linecap="round" style="display:none"/>
+      </svg>
+      <span id="camLabel">摄像头</span>
+    </button>
+    <button class="tool-arrow" onclick="toggleDropdown('camDropdown',event)">
+      <svg width="8" height="5" viewBox="0 0 8 5"><path d="M0 0l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+    </button>
+    <div class="dropdown" id="camDropdown">
+      <div class="dropdown-title">选择摄像头</div>
+      <div id="camList"></div>
+      <div class="dropdown-sep"></div>
+      <div class="dropdown-item" onclick="toggle('virtual-bg');closeAllDropdowns()">
+        <span class="check"></span>虚拟背景设置
+      </div>
+    </div>
+  </div>
 
   <div class="bar-divider"></div>
 
@@ -167,6 +217,7 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
 <script>
 var state = { micOn: false, camOn: false, chatOpen: false, signal: 3, seconds: 0, appIcons: [] };
 var micCtx = null, micAnalyser = null, micBuf = null, micRaf = null;
+var currentMicId = '', currentCamId = '';
 
 function toggle(type) {
   if (window.toolbarAPI) window.toolbarAPI.sendAction(type);
@@ -190,18 +241,16 @@ function updateSignal() {
 }
 
 function updateMic() {
-  var btn = document.getElementById('micBtn');
-  btn.classList.toggle('off', !state.micOn);
+  document.getElementById('micBtn').classList.toggle('off', !state.micOn);
   document.getElementById('micSlash').style.display = state.micOn ? 'none' : 'block';
-  document.getElementById('micLabel').textContent = state.micOn ? '关闭麦克风' : '开启麦克风';
+  document.getElementById('micLabel').textContent = state.micOn ? '麦克风' : '麦克风';
   if (state.micOn) startMicMeter(); else stopMicMeter();
 }
 
 function updateCam() {
-  var btn = document.getElementById('camBtn');
-  btn.classList.toggle('off', !state.camOn);
+  document.getElementById('camBtn').classList.toggle('off', !state.camOn);
   document.getElementById('camSlash').style.display = state.camOn ? 'none' : 'block';
-  document.getElementById('camLabel').textContent = state.camOn ? '关闭摄像头' : '开启摄像头';
+  document.getElementById('camLabel').textContent = state.camOn ? '摄像头' : '摄像头';
 }
 
 function updateChat() {
@@ -209,27 +258,80 @@ function updateChat() {
 }
 
 function updateShareLabel(label, icons) {
-  document.getElementById('shareLabel').textContent = label || '共享中';
+  var shareLabel = document.getElementById('shareLabel');
   var wrap = document.getElementById('appIconsWrap');
   if (icons && icons.length > 0) {
+    // 应用模式：只显示图标，不显示文字
+    shareLabel.style.display = 'none';
     wrap.style.display = 'flex';
     wrap.innerHTML = '';
-    var show = icons.slice(0, 3);
-    show.forEach(function(src) {
+    icons.slice(0, 4).forEach(function(src) {
       if (!src) return;
       var img = document.createElement('img');
       img.src = src; img.className = 'app-icon-img';
       wrap.appendChild(img);
     });
-    if (icons.length > 3) {
+    if (icons.length > 4) {
       var more = document.createElement('span');
       more.className = 'app-icon-more';
-      more.textContent = '+' + (icons.length - 3);
+      more.textContent = '+' + (icons.length - 4);
       wrap.appendChild(more);
     }
   } else {
+    // 桌面模式：显示文字
     wrap.style.display = 'none';
+    shareLabel.style.display = '';
+    shareLabel.textContent = label || '共享中';
   }
+}
+
+/* 下拉菜单 */
+function toggleDropdown(id, e) {
+  e && e.stopPropagation();
+  var el = document.getElementById(id);
+  var showing = el.classList.contains('show');
+  closeAllDropdowns();
+  if (!showing) {
+    el.classList.add('show');
+    if (id === 'micDropdown') loadMicList();
+    if (id === 'camDropdown') loadCamList();
+  }
+}
+function closeAllDropdowns() {
+  document.querySelectorAll('.dropdown').forEach(function(d) { d.classList.remove('show'); });
+}
+document.addEventListener('click', closeAllDropdowns);
+
+function loadMicList() {
+  navigator.mediaDevices.enumerateDevices().then(function(devices) {
+    var mics = devices.filter(function(d) { return d.kind === 'audioinput'; });
+    var list = document.getElementById('micList');
+    list.innerHTML = '';
+    mics.forEach(function(mic) {
+      var item = document.createElement('div');
+      item.className = 'dropdown-item' + (mic.deviceId === currentMicId ? ' active' : '');
+      var check = mic.deviceId === currentMicId ? '✓' : '';
+      item.innerHTML = '<span class="check">' + check + '</span>' + (mic.label || '麦克风');
+      item.onclick = function() { currentMicId = mic.deviceId; closeAllDropdowns(); };
+      list.appendChild(item);
+    });
+  });
+}
+
+function loadCamList() {
+  navigator.mediaDevices.enumerateDevices().then(function(devices) {
+    var cams = devices.filter(function(d) { return d.kind === 'videoinput'; });
+    var list = document.getElementById('camList');
+    list.innerHTML = '';
+    cams.forEach(function(cam) {
+      var item = document.createElement('div');
+      item.className = 'dropdown-item' + (cam.deviceId === currentCamId ? ' active' : '');
+      var check = cam.deviceId === currentCamId ? '✓' : '';
+      item.innerHTML = '<span class="check">' + check + '</span>' + (cam.label || '摄像头');
+      item.onclick = function() { currentCamId = cam.deviceId; closeAllDropdowns(); };
+      list.appendChild(item);
+    });
+  });
 }
 
 /* 麦克风音量采集 */
@@ -249,7 +351,6 @@ function startMicMeter() {
       var sum = 0;
       for (var i = 0; i < micBuf.length; i++) sum += micBuf[i];
       var level = Math.min(1, sum / micBuf.length / 128 * 2);
-      // 从底部往上填充：胶囊高度13，y从13.5往上
       var h = level * 13;
       var rect = document.getElementById('micLevelRect');
       if (rect) { rect.setAttribute('y', 13.5 - h); rect.setAttribute('height', h); }

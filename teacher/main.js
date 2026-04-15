@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, session, desktopCapturer, screen } = requir
 const path = require('path');
 const { spawn } = require('child_process');
 
-let win, toolbarWin, pipWin, chatWin;
+let win, toolbarWin, pipWin;
 let borderProcs = [];
 let liveSeconds = 0, networkSignal = 3, timerInterval = null;
 let shareState = { micOn: false, camOn: false, chatOpen: false };
@@ -57,8 +57,8 @@ function createBorder(data) {
 function createToolbar() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   toolbarWin = new BrowserWindow({
-    width: 560, height: 60,
-    x: Math.round((width - 560) / 2),
+    width: 620, height: 60,
+    x: Math.round((width - 620) / 2),
     y: height - 80,
     frame: false, transparent: true,
     alwaysOnTop: true, resizable: false,
@@ -94,24 +94,6 @@ function createPip() {
   pipWin.on('closed', () => { pipWin = null; });
 }
 
-function createChatPanel() {
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-  const panelW = 320, panelH = Math.min(600, height - 100);
-  chatWin = new BrowserWindow({
-    width: panelW, height: panelH,
-    x: width - panelW - 12, y: Math.round((height - panelH) / 2),
-    frame: false, transparent: true,
-    alwaysOnTop: true, resizable: false,
-    skipTaskbar: true,
-    webPreferences: {
-      nodeIntegration: false, contextIsolation: true,
-      preload: path.join(__dirname, 'preload-toolbar.js')
-    }
-  });
-  chatWin.loadFile(path.join(__dirname, 'chat-panel.html'));
-  chatWin.setAlwaysOnTop(true, 'screen-saver');
-  chatWin.on('closed', () => { chatWin = null; shareState.chatOpen = false; if (toolbarWin) toolbarWin.webContents.send('state-update', shareState); });
-}
 
 function activateWindows(windowIds) {
   if (!windowIds || !windowIds.length) return;
@@ -154,7 +136,6 @@ function stopShareMode() {
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   if (toolbarWin) { toolbarWin.close(); toolbarWin = null; }
   if (pipWin) { pipWin.close(); pipWin = null; }
-  if (chatWin) { chatWin.close(); chatWin = null; }
   borderProcs.forEach(p => { try { p.kill(); } catch(e) {} });
   borderProcs = [];
   if (win) { win.show(); win.focus(); }
@@ -312,11 +293,16 @@ ipcMain.on('toolbar-action', (e, action) => {
   if (action === 'chat') {
     shareState.chatOpen = !shareState.chatOpen;
     if (toolbarWin) toolbarWin.webContents.send('state-update', shareState);
-    if (shareState.chatOpen) {
-      if (!chatWin) createChatPanel();
-    } else {
-      if (chatWin) { chatWin.close(); chatWin = null; }
+    // 通知主窗口展开/收起侧边互动区
+    if (win) {
+      if (shareState.chatOpen) { win.show(); }
+      win.webContents.send('toolbar-action', 'chat');
     }
+    return;
+  }
+  if (action === 'virtual-bg') {
+    // 通知主窗口打开虚拟背景设置
+    if (win) { win.show(); win.webContents.send('toolbar-action', 'virtual-bg'); }
     return;
   }
 });
