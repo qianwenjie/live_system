@@ -26,20 +26,33 @@ function togglePanel(id, e) {
     if (id === 'camPanel') loadCamList();
   }
 }
-function openVbg() {
+function openVbg(e) {
+  e && e.stopPropagation();
   closeAll();
-  buildVbgGrid();
-  document.getElementById('vbgPanel').classList.add('show');
+  if (window.toolbarAPI) window.toolbarAPI.sendAction('open-vbg:' + currentVbg);
 }
 function closeAll() {
-  ['micPanel','camPanel','vbgPanel'].forEach(function(id) {
-    document.getElementById(id).classList.remove('show');
+  ['micPanel','camPanel'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.remove('show');
   });
   ['micArrow','camArrow'].forEach(function(id) {
-    document.getElementById(id).classList.remove('open');
+    var el = document.getElementById(id);
+    if (el) el.classList.remove('open');
   });
 }
 document.addEventListener('click', closeAll);
+
+function formatMicLabel(d) {
+  if (d.deviceId === 'default') {
+    var n = (d.label||'').replace(/^Default\s*[-–—]\s*/i,'').replace(/\s*\(Built-in\)/i,'');
+    return '系统默认（' + (n||'麦克风') + '）';
+  }
+  return (d.label||'麦克风').replace(/\s*\(Built-in\)/i,'');
+}
+function formatCamLabel(d) {
+  return (d.label||'摄像头').replace(/\s*\(Built-in\)/i,'');
+}
 
 /* 麦克风列表 */
 function loadMicList() {
@@ -48,11 +61,12 @@ function loadMicList() {
     var el = document.getElementById('micList');
     el.innerHTML = '';
     if (!mics.length) { el.innerHTML='<div class="popup-item" style="color:rgba(255,255,255,0.3)">未检测到麦克风</div>'; return; }
+    if (!currentMicId && mics.length) currentMicId = mics[0].deviceId;
     mics.forEach(function(m) {
       var item = document.createElement('div');
       item.className = 'popup-item' + (m.deviceId===currentMicId?' active':'');
-      item.innerHTML = '<span class="pi-check">'+(m.deviceId===currentMicId?'✓':'')+'</span>'+(m.label||'麦克风');
-      item.onclick = function(e) { e.stopPropagation(); currentMicId=m.deviceId; closeAll(); loadMicList(); };
+      item.textContent = formatMicLabel(m);
+      item.onclick = function(e) { e.stopPropagation(); currentMicId=m.deviceId; closeAll(); };
       el.appendChild(item);
     });
   });
@@ -65,34 +79,18 @@ function loadCamList() {
     var el = document.getElementById('camList');
     el.innerHTML = '';
     if (!cams.length) { el.innerHTML='<div class="popup-item" style="color:rgba(255,255,255,0.3)">未检测到摄像头</div>'; return; }
+    if (!currentCamId && cams.length) currentCamId = cams[0].deviceId;
     cams.forEach(function(c) {
       var item = document.createElement('div');
       item.className = 'popup-item' + (c.deviceId===currentCamId?' active':'');
-      item.innerHTML = '<span class="pi-check">'+(c.deviceId===currentCamId?'✓':'')+'</span>'+(c.label||'摄像头');
+      item.textContent = formatCamLabel(c);
       item.onclick = function(e) { e.stopPropagation(); currentCamId=c.deviceId; closeAll(); };
       el.appendChild(item);
     });
   });
 }
 
-/* 虚拟背景网格 */
-function buildVbgGrid() {
-  var grid = document.getElementById('vbgGrid');
-  grid.innerHTML = '';
-  VBG_LIST.forEach(function(bg) {
-    var wrap = document.createElement('div');
-    wrap.innerHTML = '<div class="vbg-item'+(bg.id===currentVbg?' active':'')+'" onclick="selectVbg(\''+bg.id+'\')">'
-      + (bg.img ? '<img src="'+bg.img+'" onerror="this.style.display=\'none\'">' : '<div class="vbg-none" style="width:100%;height:100%"><span>不使用</span></div>')
-      + '</div><div class="vbg-label">'+bg.label+'</div>';
-    grid.appendChild(wrap);
-  });
-}
-function selectVbg(id) {
-  currentVbg = id;
-  if (window.toolbarAPI) window.toolbarAPI.sendAction('vbg:' + id);
-  buildVbgGrid();
-}
-
+/* 状态更新 */
 /* 状态更新 */
 function updateTimer() {
   var s=state.seconds;
@@ -113,7 +111,7 @@ function updateCam() {
   document.getElementById('camSlash').style.display=state.camOn?'none':'block';
 }
 function updateChat() {
-  document.getElementById('chatLabel').textContent=state.chatOpen?'收起互动':'互动区';
+  document.getElementById('chatLabel').textContent=state.chatOpen?'折叠聊天':'展开聊天';
 }
 function updateShareLabel(label, icons) {
   var shareLabel=document.getElementById('shareLabel');
@@ -159,5 +157,23 @@ if (window.toolbarAPI) {
   window.toolbarAPI.onTimerTick(function(d){
     state.seconds=d.seconds; state.signal=d.signal; updateTimer(); updateSignal();
   });
+  if (window.toolbarAPI.onVbgApplied) {
+    window.toolbarAPI.onVbgApplied(function(bgId) { currentVbg = bgId; });
+  }
 }
 updateTimer(); updateSignal(); updateMic(); updateCam();
+
+/* 透明区域点击穿透 */
+if (window.toolbarAPI && window.toolbarAPI.setIgnoreMouseEvents) {
+  document.addEventListener('mousemove', function(e) {
+    var el = document.elementFromPoint(e.clientX, e.clientY);
+    if (!el || el === document.documentElement || el === document.body) {
+      window.toolbarAPI.setIgnoreMouseEvents(true, { forward: true });
+    } else {
+      window.toolbarAPI.setIgnoreMouseEvents(false);
+    }
+  });
+  document.addEventListener('mouseleave', function() {
+    window.toolbarAPI.setIgnoreMouseEvents(true, { forward: true });
+  });
+}

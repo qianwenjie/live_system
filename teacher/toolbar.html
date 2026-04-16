@@ -10,17 +10,18 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
 .bar {
   position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
   display:flex; align-items:center; gap:4px;
-  background:rgba(20,20,20,0.88); backdrop-filter:blur(12px);
+  background:rgba(16,16,16,0.95); backdrop-filter:blur(12px);
   border-radius:14px; padding:0 10px; height:52px;
-  border:1px solid rgba(255,255,255,0.12);
+  border:none;
   -webkit-app-region:drag; user-select:none; white-space:nowrap;
 }
 .bar * { -webkit-app-region:no-drag; }
 .bar-divider { width:1px; height:24px; background:rgba(255,255,255,0.15); margin:0 2px; flex-shrink:0; }
 .bar-item {
-  display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
-  gap:2px; height:44px; padding-bottom:2px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:4px; height:40px; min-width:44px;
 }
+.bar-icon-row { display:flex; align-items:center; justify-content:center; height:18px; }
 .signal-wrap { display:flex; align-items:flex-end; gap:2px; height:14px; }
 .signal-bar { width:3px; border-radius:1px; background:rgba(255,255,255,0.2); }
 .signal-bar.on { background:#22c55e; }
@@ -35,19 +36,22 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
 .tool-group { display:flex; align-items:center; height:40px; position:relative; }
 .tool-btn {
   display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:3px; padding:0 8px; border-radius:8px 0 0 8px; border:none;
+  gap:4px; padding:0 8px; border-radius:8px 0 0 8px; border:none;
   background:transparent; color:rgba(255,255,255,0.75);
   font-size:10px; cursor:pointer; transition:.15s; height:40px; min-width:44px;
 }
 .tool-btn:hover { background:rgba(255,255,255,0.1); }
 .tool-btn.off { color:#ef4444; }
-.tool-btn svg { flex-shrink:0; display:block; }
+.tool-btn span { color:rgba(255,255,255,0.4); }
+.tool-btn.off span { color:#ef4444; }
+.tool-btn svg { flex-shrink:0; display:block; color:rgba(255,255,255,0.9); }
+.tool-btn.off svg { color:#ef4444; }
 .tool-arrow {
   display:flex; align-items:center; justify-content:center;
   width:18px; height:40px; border:none; border-radius:0 8px 8px 0;
   background:transparent; color:rgba(255,255,255,0.4);
   cursor:pointer; transition:.15s; padding:0;
-  border-left:1px solid rgba(255,255,255,0.1);
+  border-left:none;
 }
 .tool-arrow:hover { background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.8); }
 .tool-arrow.open { color:#4ade80; }
@@ -55,7 +59,7 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
 /* 互动区 / 结束按钮 */
 .chat-btn {
   display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:3px; padding:0 10px; border-radius:8px; border:none;
+  gap:4px; padding:0 10px; border-radius:8px; border:none;
   background:rgba(31,139,115,0.25); color:#4ade80;
   font-size:10px; cursor:pointer; transition:.15s; height:40px; min-width:48px;
 }
@@ -71,7 +75,7 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
 .popup-panel {
   display:none; position:absolute; bottom:66px;
   background:rgba(22,22,24,0.96); backdrop-filter:blur(20px) saturate(180%);
-  border:1px solid rgba(255,255,255,0.12); border-radius:12px;
+  border:none; border-radius:12px;
   padding:8px 0; min-width:200px; z-index:100;
   box-shadow:0 12px 40px rgba(0,0,0,0.6);
   animation:popIn .15s cubic-bezier(.32,1,.32,1);
@@ -83,71 +87,53 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
   letter-spacing:.5px; text-transform:uppercase;
 }
 .popup-item {
-  display:flex; align-items:center; gap:10px;
+  display:flex; align-items:center;
   padding:8px 14px; font-size:12px; color:rgba(255,255,255,0.82);
   cursor:pointer; transition:.1s;
 }
 .popup-item:hover { background:rgba(255,255,255,0.07); }
-.popup-item.active { color:#4ade80; }
-.popup-item .pi-check { width:14px; font-size:12px; text-align:center; flex-shrink:0; }
+.popup-item.active { color:#4ade80; font-weight:600; }
 .popup-sep { height:1px; background:rgba(255,255,255,0.08); margin:4px 0; }
 .popup-item-icon { width:18px; height:18px; border-radius:4px; object-fit:contain; flex-shrink:0; }
 
-/* 虚拟背景面板 */
-.vbg-panel {
-  display:none; position:absolute; bottom:66px;
-  background:rgba(22,22,24,0.96); backdrop-filter:blur(20px) saturate(180%);
-  border:1px solid rgba(255,255,255,0.12); border-radius:12px;
-  padding:12px; z-index:101; width:280px;
-  box-shadow:0 12px 40px rgba(0,0,0,0.6);
-  animation:popIn .15s cubic-bezier(.32,1,.32,1);
-}
-.vbg-panel.show { display:block; }
-.vbg-title { font-size:11px; color:rgba(255,255,255,0.4); margin-bottom:10px; }
-.vbg-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-.vbg-item {
-  border-radius:8px; overflow:hidden; cursor:pointer;
-  border:2px solid transparent; transition:.15s; aspect-ratio:16/10;
-  background:#333; position:relative;
-}
-.vbg-item:hover { border-color:rgba(255,255,255,0.3); }
-.vbg-item.active { border-color:#4ade80; }
-.vbg-item img { width:100%; height:100%; object-fit:cover; display:block; }
-.vbg-none { display:flex; align-items:center; justify-content:center; background:#2a2a2a; }
-.vbg-none span { font-size:10px; color:rgba(255,255,255,0.4); }
-.vbg-label { font-size:10px; color:rgba(255,255,255,0.5); text-align:center; margin-top:4px; }
 </style>
 </head>
 <body>
 <div class="bar" id="bar">
   <!-- 信号 -->
   <div class="bar-item" style="min-width:36px">
-    <div class="signal-wrap">
-      <div class="signal-bar" style="height:4px" id="s1"></div>
-      <div class="signal-bar" style="height:7px" id="s2"></div>
-      <div class="signal-bar" style="height:10px" id="s3"></div>
-      <div class="signal-bar" style="height:13px" id="s4"></div>
+    <div class="bar-icon-row">
+      <div class="signal-wrap">
+        <div class="signal-bar" style="height:4px" id="s1"></div>
+        <div class="signal-bar" style="height:7px" id="s2"></div>
+        <div class="signal-bar" style="height:10px" id="s3"></div>
+        <div class="signal-bar" style="height:13px" id="s4"></div>
+      </div>
     </div>
     <span class="bar-label" id="signalLabel">信号强</span>
   </div>
   <div class="bar-divider"></div>
   <!-- 共享标识 -->
-  <div class="bar-item" style="min-width:40px;align-items:center">
-    <div class="app-icons" id="appIconsWrap" style="display:none"></div>
-    <span class="share-label" id="shareLabel">共享中</span>
+  <div class="bar-item" style="min-width:40px">
+    <div class="bar-icon-row">
+      <div class="app-icons" id="appIconsWrap" style="display:none"></div>
+      <span class="share-label" id="shareLabel">共享中</span>
+    </div>
     <span class="bar-label">屏幕共享</span>
   </div>
   <div class="bar-divider"></div>
   <!-- 计时 -->
   <div class="bar-item" style="min-width:60px">
-    <span class="timer" id="timer">00:00:00</span>
+    <div class="bar-icon-row">
+      <span class="timer" id="timer">00:00:00</span>
+    </div>
     <span class="bar-label">已直播</span>
   </div>
   <div class="bar-divider"></div>
   <!-- 麦克风 -->
   <div class="tool-group" id="micGroup">
     <button class="tool-btn" id="micBtn" onclick="toggle('mic')">
-      <svg width="16" height="22" viewBox="0 0 16 24">
+      <svg width="14" height="18" viewBox="0 0 16 24">
         <defs><clipPath id="micClip"><rect x="4" y="0.5" width="8" height="13" rx="4"/></clipPath></defs>
         <rect x="4" y="0.5" width="8" height="13" rx="4" fill="currentColor"/>
         <rect id="micLevelRect" x="4" y="13.5" width="8" height="0" fill="#22c55e" clip-path="url(#micClip)"/>
@@ -182,23 +168,18 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; }
       <div class="popup-section-title">选择摄像头</div>
       <div id="camList"></div>
       <div class="popup-sep"></div>
-      <div class="popup-item" onclick="openVbg()">
+      <div class="popup-item" onclick="openVbg(event)">
         <span class="pi-check"></span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="rgba(255,255,255,0.6)"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-        虚拟背景
+        设置虚拟背景
       </div>
-    </div>
-    <!-- 虚拟背景面板 -->
-    <div class="vbg-panel" id="vbgPanel" style="left:0">
-      <div class="vbg-title">虚拟背景</div>
-      <div class="vbg-grid" id="vbgGrid"></div>
     </div>
   </div>
   <div class="bar-divider"></div>
   <!-- 互动区 -->
   <button class="chat-btn" id="chatBtn" onclick="toggle('chat')">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4C2.9 2 2 2.9 2 4v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
-    <span id="chatLabel">互动区</span>
+    <span id="chatLabel">展开聊天</span>
   </button>
   <div class="bar-divider"></div>
   <!-- 结束 -->

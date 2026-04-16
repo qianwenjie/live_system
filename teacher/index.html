@@ -49,7 +49,291 @@
     </div>
   </section>
 
-  <section v-else-if="route==='courses'" class="page courses-page"><header class="subtop"><div><p class="eyebrow">机构课程台</p><h2>{{ institution.name }}</h2><span>{{ institution.account }} · 今日课程 4 门</span></div><div class="top-actions"><button class="ghost" @click="go('login')">切换账号</button><button class="primary" @click="go('live')">继续上次直播</button></div></header><div class="course-grid"><article v-for="course in courses" :key="course.id" class="course-card"><div class="status-line"><span class="pill" :data-status="course.status">{{ course.status }}</span><small>{{ course.mode }}</small></div><h3>{{ course.title }}</h3><p>{{ course.desc }}</p><dl><div><dt>讲师</dt><dd>{{ course.teacher }}</dd></div><div><dt>时间</dt><dd>{{ course.time }}</dd></div><div><dt>房间号</dt><dd>{{ course.roomId }}</dd></div></dl><button :class="course.status==='已结束'?'ghost':'primary'" @click="openCourse(course)">{{ course.status==='已结束'?'查看记录':'进入直播' }}</button></article></div></section>
+  <section v-else-if="route==='courses'" class="cv2-page">
+    <!-- 顶部导航 -->
+    <nav class="cv2-nav">
+      <div class="cv2-nav-welcome">
+        {{ institution.account || '老师' }}，欢迎进入直播平台
+      </div>
+      <div class="cv2-nav-r">
+        <span class="cv2-logout" @click="ui.logoutConfirm=true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          退出登录
+        </span>
+      </div>
+    </nav>
+    <!-- 主体 -->
+    <div class="cv2-body">
+      <!-- 左栏：课程列表 -->
+      <div class="cv2-left">
+        <!-- Tab 栏 -->
+        <div class="cv2-tabs">
+          <button :class="['cv2-tab', courseTab==='active'?'active':'']" @click="courseTab='active'">
+            直播列表
+          </button>
+          <button :class="['cv2-tab', courseTab==='history'?'active':'']" @click="courseTab='history'">
+            历史直播
+          </button>
+          <div class="cv2-search-wrap">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input class="cv2-search" v-model="courseSearch" placeholder="搜索课节名称">
+          </div>
+        </div>
+        <!-- 直播列表 -->
+        <div class="cv2-list" v-show="courseTab==='active'" ref="activeList" @scroll="onActiveScroll">
+          <div v-if="activeCourses.length===0" class="cv2-empty">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 10h18M8 4v-2M16 4v-2"/></svg>
+            <p>暂无进行中或待开播的课程</p>
+          </div>
+          <div v-for="c in activeVisible" :key="c.id"
+               :class="['cv2-card', selectedCourseId===c.id?'selected':'', c.status==='直播中'?'is-live':'']"
+               @click="selectedCourseId=c.id">
+            <div class="cv2-card-header">
+              <span :class="['cv2-status', c.status==='直播中'?'live':'upcoming']">
+                <span class="cv2-dot" v-if="c.status==='直播中'"></span>
+                {{ c.status }}
+              </span>
+              <span v-if="c.status!=='直播中'" :class="['cv2-countdown', getCountdownUrgent(c)?'urgent':'']">{{ getCountdown(c) }}</span>
+            </div>
+            <div class="cv2-card-title">{{ c.title }}</div>
+            <div class="cv2-card-meta">
+              <div class="cv2-card-meta-row">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <span>{{ formatTime(c) }}</span>
+                <span class="cv2-meta-sep">·</span>
+                <span>共 {{ getDuration(c) }}</span>
+              </div>
+              <div class="cv2-card-meta-row">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span>{{ c.students }}人</span>
+                <span class="cv2-meta-sep">·</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>{{ c.teacher }}</span>
+                <template v-if="c.assistant">
+                  <span class="cv2-meta-sep">·</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <span>{{ c.assistant }}</span>
+                  <span class="cv2-tag-assist">助教</span>
+                </template>
+              </div>
+            </div>
+            <div class="cv2-card-footer">
+              <span class="cv2-card-mode">{{ c.roomId }}</span>
+              <button class="cv2-card-btn" @click.stop="openCourse(c)">
+                {{ c.status==='直播中' ? (hasEnteredLive ? '重新进入' : '开始上课') : '开始上课' }}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
+          <div v-if="activeLoading" class="cv2-loading"><span class="cv2-loading-dot"></span>正在加载</div>
+        </div>
+        <!-- 历史直播 -->
+        <div class="cv2-list" v-show="courseTab==='history'" ref="historyList" @scroll="onHistoryScroll">
+          <div v-if="historyCourses.length===0" class="cv2-empty">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <p>暂无历史直播记录</p>
+          </div>
+          <div v-for="c in historyVisible" :key="c.id"
+               :class="['cv2-card', selectedCourseId===c.id?'selected':'']"
+               @click="selectedCourseId=c.id">
+            <div class="cv2-card-header">
+              <span class="cv2-status ended">已结束</span>
+              <span v-if="c.status!=='已结束'" class="cv2-status missed">未开播</span>
+            </div>
+            <div class="cv2-card-title">{{ c.title }}</div>
+            <div class="cv2-card-meta">
+              <div class="cv2-card-meta-row">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <span>{{ formatTime(c) }}</span>
+                <span class="cv2-meta-sep">·</span>
+                <span>共 {{ getDuration(c) }}</span>
+              </div>
+              <div class="cv2-card-meta-row">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span>{{ c.students }}人</span>
+                <span class="cv2-meta-sep">·</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>{{ c.teacher }}</span>
+                <template v-if="c.assistant">
+                  <span class="cv2-meta-sep">·</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <span>{{ c.assistant }}</span>
+                  <span class="cv2-tag-assist">助教</span>
+                </template>
+              </div>
+            </div>
+            <div class="cv2-card-footer">
+              <span class="cv2-card-mode">{{ c.roomId }}</span>
+              <button class="cv2-card-btn cv2-card-btn--ghost" @click.stop="openCourse(c)">查看回放</button>
+            </div>
+          </div>
+          <div v-if="historyLoading" class="cv2-loading"><span class="cv2-loading-dot"></span>正在加载</div>
+        </div>
+      </div>
+      <!-- 右栏：配置面板 -->
+      <div class="cv2-right">
+        <!-- 选中课程信息卡 -->
+        <div class="cv2-detail-card">
+          <div class="cv2-detail-head">
+            <span :class="['cv2-status',course.status==='直播中'?'live':course.status==='已结束'?'ended':'upcoming']">
+              <span class="cv2-dot" v-if="course.status==='直播中'"></span>
+              {{ course.status }}
+            </span>
+            <span class="cv2-detail-room">{{ course.roomId }}</span>
+          </div>
+          <div class="cv2-detail-title">{{ course.title }}</div>
+          <div class="cv2-detail-row">
+            <span class="cv2-detail-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>时间</span>
+            <span>{{ formatTime(course) }}</span>
+          </div>
+          <div class="cv2-detail-row">
+            <span class="cv2-detail-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>讲师</span>
+            <span>{{ course.teacher }}</span>
+          </div>
+          <div class="cv2-detail-row" v-if="course.assistant">
+            <span class="cv2-detail-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>助教</span>
+            <span>{{ course.assistant }}</span>
+          </div>
+          <button class="cv2-detail-enter" @click="openCourse(course)" v-if="course.status!=='已结束'">
+            {{ course.status==='直播中' ? (hasEnteredLive ? '重新进入' : '开始上课') : '开始上课' }}
+          </button>
+        </div>
+        <div class="cv2-config-panel">
+          <div class="cv2-config-heading">直播配置</div>
+
+          <!-- 进课配置 -->
+          <div class="cv2-config-section">
+            <div class="cv2-config-sub">进课配置</div>
+            <div class="cv2-config-row">
+              <span class="cv2-config-label">默认开启麦克风</span>
+              <button :class="['cv2-toggle',defaultMicOn?'on':'']" @click="defaultMicOn=!defaultMicOn"><span class="cv2-toggle-knob"></span></button>
+            </div>
+            <div class="cv2-config-row">
+              <span class="cv2-config-label">默认开启摄像头</span>
+              <button :class="['cv2-toggle',defaultCamOn?'on':'']" @click="defaultCamOn=!defaultCamOn"><span class="cv2-toggle-knob"></span></button>
+            </div>
+          </div>
+
+          <!-- 设备检测 -->
+          <div class="cv2-config-section">
+            <div class="cv2-config-sub">设备检测</div>
+
+            <!-- 麦克风 -->
+            <div class="cv2-device-sub">麦克风</div>
+            <div class="cv2-device-row">
+              <div class="check-select-wrap" style="flex:1;margin-bottom:0">
+                <select class="check-select" v-model="device.micLabel">
+                  <option v-for="item in device.micOptions" :key="item">{{ item }}</option>
+                </select>
+              </div>
+              <button class="cv2-detect-btn" @click="toggleMicTest">{{ device.micTesting ? '停止测试' : '检测麦克风' }}</button>
+            </div>
+            <div class="cv2-meter-row">
+              <span class="cv2-meter-label">输入等级</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="9" y="2" width="6" height="12" rx="3" fill="#1f8b73"/><path d="M5 10a7 7 0 0 0 14 0" stroke="#1f8b73" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="17" x2="12" y2="21" stroke="#1f8b73" stroke-width="2" stroke-linecap="round"/></svg>
+              <div class="check-meter-blocks">
+                <span v-for="i in 12" :key="i" class="check-meter-block" :class="i <= Math.round(micMeter/100*12) ? 'active' : ''"></span>
+              </div>
+            </div>
+
+            <!-- 扬声器 -->
+            <div class="cv2-device-sub" style="margin-top:8px">扬声器</div>
+            <div class="cv2-device-row">
+              <div class="check-select-wrap" style="flex:1;margin-bottom:0">
+                <select class="check-select" v-model="device.speakerLabel">
+                  <option v-for="item in device.speakerOptions||['系统默认扬声器']" :key="item">{{ item }}</option>
+                </select>
+              </div>
+              <button class="cv2-detect-btn" @click="toggleSpeakerTest">{{ device.speakerTesting ? '停止测试' : '检测扬声器' }}</button>
+            </div>
+            <div class="cv2-meter-row">
+              <span class="cv2-meter-label">输出等级</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H2v6h4l5 4V5Z" fill="#1f8b73"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="#1f8b73" stroke-width="2" stroke-linecap="round"/></svg>
+              <div class="check-meter-blocks">
+                <span v-for="i in 12" :key="i" class="check-meter-block" :class="i <= Math.round(speakerMeter/100*12) ? 'active' : ''"></span>
+              </div>
+            </div>
+
+            <!-- 虚拟背景 -->
+            <div class="cv2-device-sub" style="margin-top:8px">虚拟背景设置</div>
+            <div class="cv2-vbg-status">
+              <div class="cv2-vbg-info">
+                <span class="cv2-vbg-label-text">当前摄像头背景：</span>
+                <span v-if="device.vbgId==='none'" class="cv2-vbg-value">无背景</span>
+                <img v-else :src="currentBgThumb" class="cv2-vbg-thumb-img">
+              </div>
+              <button class="cv2-detect-btn" @click="ui.vbgModal=true">设置</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section v-else-if="route==='replay'" class="rp-wrap">
+    <nav class="cv2-nav">
+      <div class="cv2-nav-welcome">
+        {{ institution.account || '老师' }}，欢迎进入直播平台
+      </div>
+      <div class="cv2-nav-r">
+        <span class="cv2-logout" @click="ui.logoutConfirm=true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          退出登录
+        </span>
+      </div>
+    </nav>
+    <div class="rp-body">
+      <div class="rp-main">
+        <div class="rp-toolbar">
+          <button class="rp-back" @click="courseTab='history';go('courses')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            主页
+          </button>
+          <span class="rp-title">{{ replayCourse.title }} - 回放</span>
+        </div>
+        <div class="rp-player">
+          <video controls preload="metadata" :key="activeReplay.id">
+            <source :src="activeReplay.video" type="video/mp4">
+          </video>
+        </div>
+      </div>
+      <aside class="rp-list">
+        <button v-for="(seg, idx) in replaySegments" :key="seg.id"
+          class="rp-seg" :class="{ active: activeReplayId === seg.id }"
+          @click="activeReplayId = seg.id">
+          第 {{ idx + 1 }} 节
+        </button>
+      </aside>
+    </div>
+  </section>
+
+  <section v-else-if="route==='preparing'" class="preparing-page">
+    <div class="preparing-content">
+      <div class="preparing-spinner">
+        <svg width="48" height="48" viewBox="0 0 48 48">
+          <circle cx="24" cy="24" r="20" fill="none" stroke="#e8eaed" stroke-width="4"/>
+          <circle cx="24" cy="24" r="20" fill="none" stroke="#1f8b73" stroke-width="4" stroke-linecap="round"
+            stroke-dasharray="100" stroke-dashoffset="75">
+            <animateTransform attributeName="transform" type="rotate" from="0 24 24" to="360 24 24" dur="1s" repeatCount="indefinite"/>
+          </circle>
+        </svg>
+      </div>
+      <div class="preparing-title">直播间准备中</div>
+      <div class="preparing-step">{{ preparingText }}</div>
+      <div class="preparing-bar-wrap">
+        <div class="preparing-bar" :style="{width: preparingProgress + '%'}"></div>
+      </div>
+      <div class="preparing-course">{{ course.title }}</div>
+    </div>
+  </section>
 
   <section v-else-if="route==='check'" class="check-page">
     <div class="check-card">
@@ -240,7 +524,7 @@
         </div>
 
         <!-- 摄像头 PiP（可拖拽，仅摄像头开启时显示） -->
-        <div v-if="live.camOn" class="live-pip"
+        <div v-if="live.camOn && streams.cam" class="live-pip"
           :style="live.pipPos.x!==null ? {right:'auto',top:'auto',left:live.pipPos.x+'px',top:live.pipPos.y+'px'} : {}"
           @mousedown="pipDragStart">
           <video ref="pipVideo" autoplay muted playsinline :style="device.vbgId!=='none'?'display:none':''"></video>
@@ -309,27 +593,16 @@
         <span>设备检测</span>
       </button>
       <div class="live-tool-divider"></div>
-      <!-- 摄像头 -->
-      <button class="live-tool-btn" :class="!live.camOn?'off':''" @click="toggleCam()">
-        <svg width="26" height="20" viewBox="0 0 1024 1024" fill="none">
-          <path d="M943.488 260a32.008 32.008 0 0 0-32.48 0.864L800 330.368V288c0-52.928-43.072-96-96-96H160c-52.928 0-96 43.072-96 96v448c0 52.928 43.072 96 96 96h544c52.928 0 96-43.072 96-96v-38.88l111.648 66.368A31.818 31.818 0 0 0 928 768a31.938 31.938 0 0 0 15.808-4.192A32.001 32.001 0 0 0 960 736V288a31.947 31.947 0 0 0-16.512-28zM256 448c-35.296 0-64-28.704-64-64s28.704-64 64-64 64 28.704 64 64-28.704 64-64 64z" :fill="live.camOn ? 'currentColor' : '#ef4444'"/>
-          <line v-if="!live.camOn" x1="80" y1="80" x2="944" y2="944" stroke="white" stroke-width="100" stroke-linecap="round"/>
-        </svg>
-        <span>{{ live.camOn ? '关闭摄像头' : '开启摄像头' }}</span>
-      </button>
-      <!-- 麦克风：精致面性SVG，胶囊体内绿色音量填充 -->
+      <!-- 麦克风 -->
       <div class="live-mic-btn-wrap">
         <button class="live-tool-btn live-mic-main" :class="!live.micOn?'off':''" @click="toggleMic()">
           <svg width="16" height="22" viewBox="0 0 16 24" class="live-mic-svg">
             <defs>
-              <!-- 胶囊蒙版，与图标形状完全一致 -->
               <clipPath id="micBodyClip">
                 <rect x="4" y="0.5" width="8" height="13" rx="4"/>
               </clipPath>
             </defs>
-            <!-- 胶囊体底色：开启灰色，关闭红色 -->
             <rect x="4" y="0.5" width="8" height="13" rx="4" :fill="live.micOn ? '#1f2937' : '#ef4444'"/>
-            <!-- 绿色音量矩形，被胶囊蒙版裁剪，从底部往上填充 -->
             <rect v-if="live.micOn"
               x="4" width="8"
               :y="13.5 - micMeter * 0.13"
@@ -337,29 +610,50 @@
               fill="#22c55e"
               clip-path="url(#micBodyClip)"
               class="live-mic-level"/>
-            <!-- 底座弧 -->
             <path d="M1 10a7 7 0 0 0 14 0" :stroke="live.micOn ? '#1f2937' : '#ef4444'" stroke-width="2" stroke-linecap="round" fill="none"/>
-            <!-- 支柱 -->
             <line x1="8" y1="17" x2="8" y2="20.5" :stroke="live.micOn ? '#1f2937' : '#ef4444'" stroke-width="2" stroke-linecap="round"/>
-            <!-- 底座横线 -->
             <line x1="4" y1="20.5" x2="12" y2="20.5" :stroke="live.micOn ? '#1f2937' : '#ef4444'" stroke-width="2" stroke-linecap="round"/>
-            <!-- 关闭时斜杠 -->
             <line v-if="!live.micOn" x1="-4" y1="1" x2="22" y2="23" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
           </svg>
           <span>{{ live.micOn ? '关闭麦克风' : '开启麦克风' }}</span>
         </button>
-        <button class="live-mic-arrow-btn" @click.stop="ui.micMenu=!ui.micMenu">
+        <button class="live-mic-arrow-btn" @click.stop="openMicMenu()">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><polyline points="18 15 12 9 6 15"/></svg>
         </button>
         <div v-if="ui.micMenu" class="live-mic-menu" @click.stop>
           <div class="live-mic-menu-title">选择麦克风</div>
-          <div v-for="item in device.micOptions" :key="item"
+          <div v-for="d in device.realMics" :key="d.deviceId"
             class="live-mic-option"
-            :class="{active: device.micLabel === item}"
-            @click="device.micLabel=item; ui.micMenu=false">
-            <svg v-if="device.micLabel===item" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            <span v-else style="width:12px;display:inline-block"></span>
-            {{ item }}
+            :class="{active: device.currentMicId === d.deviceId}"
+            @click="device.currentMicId=d.deviceId; device.micLabel=d.label; ui.micMenu=false">
+            {{ d._displayLabel || d.label || '麦克风' }}
+          </div>
+        </div>
+      </div>
+      <!-- 摄像头 -->
+      <div class="live-mic-btn-wrap">
+        <button class="live-tool-btn live-mic-main" :class="!live.camOn?'off':''" @click="toggleCam()">
+          <svg width="22" height="16" viewBox="0 0 1024 1024" fill="none">
+            <path d="M943.488 260a32.008 32.008 0 0 0-32.48 0.864L800 330.368V288c0-52.928-43.072-96-96-96H160c-52.928 0-96 43.072-96 96v448c0 52.928 43.072 96 96 96h544c52.928 0 96-43.072 96-96v-38.88l111.648 66.368A31.818 31.818 0 0 0 928 768a31.938 31.938 0 0 0 15.808-4.192A32.001 32.001 0 0 0 960 736V288a31.947 31.947 0 0 0-16.512-28z" :fill="live.camOn ? 'currentColor' : '#ef4444'"/>
+            <line v-if="!live.camOn" x1="80" y1="80" x2="944" y2="944" stroke="white" stroke-width="100" stroke-linecap="round"/>
+          </svg>
+          <span>{{ live.camOn ? '关闭摄像头' : '开启摄像头' }}</span>
+        </button>
+        <button class="live-mic-arrow-btn" @click.stop="openCamMenu()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8"><polyline points="18 15 12 9 6 15"/></svg>
+        </button>
+        <div v-if="ui.camMenu" class="live-mic-menu" @click.stop>
+          <div class="live-mic-menu-title">选择摄像头</div>
+          <div v-for="d in device.realCams" :key="d.deviceId"
+            class="live-mic-option"
+            :class="{active: device.currentCamId === d.deviceId}"
+            @click="device.currentCamId=d.deviceId; device.camLabel=d.label; ui.camMenu=false">
+            {{ d._displayLabel || d.label || '摄像头' }}
+          </div>
+          <div style="height:1px;background:#e5e7eb;margin:4px 0"></div>
+          <div class="live-mic-option" @click="ui.camMenu=false; ui.vbgModal=true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#888"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+            设置虚拟背景
           </div>
         </div>
       </div>
@@ -378,7 +672,7 @@
           <line x1="7" y1="7" x2="17" y2="17" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
           <line x1="17" y1="7" x2="7" y2="17" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
         </svg>
-        结束直播
+        结束上课
       </button>
     </div>
 
@@ -418,7 +712,7 @@
           </div>
           <div v-else-if="live.appList.length === 0" class="screen-app-empty">未检测到可共享的窗口</div>
           <div v-else class="screen-grid">
-            <div v-for="app in live.appList" :key="app.id"
+            <div v-for="(app, idx) in live.appList" :key="app.id + '-' + idx"
               class="screen-card"
               :class="{ selected: isAppSelected(app.id) }"
               @click="toggleAppSelect(app)">
@@ -448,12 +742,12 @@
 
     <!-- 结束确认弹窗 -->
     <div v-if="ui.endConfirm" class="modal-mask" @click.self="ui.endConfirm=false">
-      <div class="modal">
-        <h3>确认结束直播？</h3>
-        <p>结束后将停止屏幕共享、摄像头与麦克风，并返回{{ loginContext==='roomDirect'?'登录页':'课程列表' }}。</p>
-        <div class="dialog-actions">
-          <button class="ghost" @click="ui.endConfirm=false">继续直播</button>
-          <button class="danger" @click="confirmEnd()">确认结束</button>
+      <div class="modal" style="width:340px;text-align:center;padding:28px 24px;border-radius:14px">
+        <h3 style="margin:0 0 10px;font-size:16px;color:#111">确认结束上课？</h3>
+        <p style="font-size:13px;color:#6b7280;margin:0 0 24px">结束后将退出直播间</p>
+        <div style="display:flex;gap:12px">
+          <button style="flex:1;padding:10px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;color:#374151;font-size:13px;font-weight:500;cursor:pointer" @click="ui.endConfirm=false">取消</button>
+          <button style="flex:1;padding:10px;border-radius:8px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:600;cursor:pointer" @click="confirmEnd()">确认结束</button>
         </div>
       </div>
     </div>
@@ -480,23 +774,6 @@
                 :style="(device.mirror?'transform:scaleX(-1);':'')+( device.vbgId!=='none'?'display:none':'' )"></video>
               <canvas ref="modalBgCanvas" class="check-bg-canvas" :style="device.vbgId!=='none'?'display:block':''"></canvas>
               <div v-if="device.camStatus!=='ok'" class="check-video-empty"><span>摄像头未连接</span></div>
-            </div>
-            <!-- 虚拟背景 -->
-            <div class="check-section-title" style="margin-top:18px">虚拟背景</div>
-            <div class="check-vbg-row">
-              <button v-for="bg in checkBgs" :key="bg.id"
-                class="check-vbg-btn" :class="device.vbgId===bg.id?'active':''"
-                @click="selectCheckBg(bg.id)">
-                <span class="check-vbg-thumb">
-                  <template v-if="bg.id==='none'">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                  </template>
-                  <template v-else>
-                    <img :src="bg.thumb" style="width:100%;height:100%;object-fit:cover;border-radius:6px">
-                  </template>
-                </span>
-                <span class="check-vbg-label">{{ bg.label }}</span>
-              </button>
             </div>
           </div>
           <div class="check-right">
@@ -539,6 +816,57 @@
     </div>
 
   </section>
+
+  <!-- 退出登录确认弹窗 -->
+  <div v-if="ui.logoutConfirm" class="modal-mask" @click.self="ui.logoutConfirm=false">
+    <div class="modal" style="width:340px;text-align:center;padding:28px 24px;border-radius:14px">
+      <h3 style="margin:0 0 10px;font-size:16px;color:#111">确认退出</h3>
+      <p style="font-size:13px;color:#6b7280;margin:0 0 24px">确定要退出登录吗？</p>
+      <div style="display:flex;gap:12px">
+        <button style="flex:1;padding:10px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;color:#374151;font-size:13px;font-weight:500;cursor:pointer" @click="ui.logoutConfirm=false">取消</button>
+        <button style="flex:1;padding:10px;border-radius:8px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:600;cursor:pointer" @click="ui.logoutConfirm=false;go('login')">确认退出</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 虚拟背景弹窗（全局） -->
+  <div v-if="ui.vbgModal" class="modal-mask" @click.self="ui.vbgModal=false">
+    <div class="modal modal-vbg">
+      <div class="modal-check-header">
+        <h3>虚拟背景设置</h3>
+        <button class="modal-close-btn" @click="ui.vbgModal=false">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="vbg-modal-preview">
+        <video ref="vbgCamVideo" autoplay muted playsinline :style="device.vbgId!=='none'?'opacity:0':''"></video>
+        <canvas ref="vbgBgCanvas" :style="device.vbgId!=='none'?'display:block':'display:none'"></canvas>
+      </div>
+      <div style="padding:16px 24px">
+        <div style="font-size:12px;color:#888;margin-bottom:10px">选择背景</div>
+        <div class="check-vbg-row">
+          <button v-for="bg in checkBgs" :key="bg.id"
+            class="check-vbg-btn" :class="device.vbgId===bg.id?'active':''"
+            @click="selectCheckBg(bg.id)">
+            <span class="check-vbg-thumb">
+              <template v-if="bg.id==='none'">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+              </template>
+              <template v-else>
+                <img :src="bg.thumb" style="width:100%;height:100%;object-fit:cover;border-radius:6px">
+              </template>
+            </span>
+            <span class="check-vbg-label">{{ bg.label }}</span>
+          </button>
+        </div>
+      </div>
+      <div class="check-footer" style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="live-tool-btn" @click="ui.vbgModal=false">取消</button>
+        <button class="check-done-btn" @click="applyMainVbg()">确认应用</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 <script src="../vendor/vue.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/selfie_segmentation.js" crossorigin="anonymous"></script>

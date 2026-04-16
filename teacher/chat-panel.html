@@ -8,51 +8,48 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; f
 
 .panel {
   width:100%; height:100%;
-  background:rgba(255,255,255,0.82);
-  backdrop-filter:blur(24px) saturate(180%);
-  -webkit-backdrop-filter:blur(24px) saturate(180%);
+  background:rgba(16,16,16,0.95);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
   border-radius:14px;
-  border:1px solid rgba(255,255,255,0.6);
-  box-shadow:0 8px 32px rgba(0,0,0,0.12);
+  border:1px solid rgba(255,255,255,0.12);
   display:flex; flex-direction:column; overflow:hidden;
   animation:slideIn .2s cubic-bezier(.32,1,.32,1);
 }
 @keyframes slideIn { from{transform:translateX(20px);opacity:0} to{transform:translateX(0);opacity:1} }
 
-/* 拖拽标题栏 */
 .panel-header {
   display:flex; align-items:center; justify-content:space-between;
   padding:10px 14px 8px;
-  border-bottom:1px solid #e5e7eb;
+  border-bottom:1px solid rgba(255,255,255,0.08);
   -webkit-app-region:drag; flex-shrink:0;
 }
 .panel-header * { -webkit-app-region:no-drag; }
-.panel-title { font-size:13px; font-weight:600; color:#1a1a1a; }
+.panel-title { font-size:13px; font-weight:600; color:rgba(255,255,255,0.9); }
 .close-btn {
   width:22px; height:22px; border-radius:6px; border:none;
-  background:#f3f4f6; color:#666; cursor:pointer;
+  background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.5); cursor:pointer;
   display:flex; align-items:center; justify-content:center;
 }
-.close-btn:hover { background:#e5e7eb; }
+.close-btn:hover { background:rgba(255,255,255,0.18); color:rgba(255,255,255,0.8); }
 
-/* 照抄主窗口 t-chat-head */
 .t-chat-head {
-  padding:8px 12px; border-bottom:1px solid #e5e7eb;
-  background:#fff; flex-shrink:0;
+  padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.08);
+  background:transparent; flex-shrink:0;
   display:flex; align-items:center; justify-content:space-between; gap:8px;
 }
 .t-chat-tabs { display:flex; gap:4px; }
 .t-chat-tab {
   padding:5px 10px; border-radius:8px; border:none;
-  background:transparent; font-size:13px; color:#666;
+  background:transparent; font-size:13px; color:rgba(255,255,255,0.5);
   cursor:pointer; transition:.15s; white-space:nowrap;
 }
-.t-chat-tab.active { background:#eaf7f2; color:#1f8b73; font-weight:600; }
+.t-chat-tab.active { background:rgba(31,139,115,0.3); color:#4ade80; font-weight:600; }
 .t-mute-all-btn {
-  padding:4px 10px; border-radius:8px; border:1px solid #e5e7eb;
-  background:#fff; font-size:12px; color:#555; cursor:pointer; white-space:nowrap; flex-shrink:0;
+  padding:4px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.12);
+  background:transparent; font-size:12px; color:rgba(255,255,255,0.5); cursor:pointer; white-space:nowrap; flex-shrink:0;
 }
-.t-mute-all-btn:hover { border-color:#fca5a5; color:#e53e3e; }
+.t-mute-all-btn:hover { border-color:#fca5a5; color:#ef4444; }
 </style>
 </head>
 <body>
@@ -69,7 +66,7 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; f
   <div class="t-chat-head">
     <div class="t-chat-tabs">
       <button class="t-chat-tab active" id="tabChat" onclick="switchTab('chat')">互动</button>
-      <button class="t-chat-tab" id="tabStudents" onclick="switchTab('students')">学生 (<span id="studentCount">3</span>)</button>
+      <button class="t-chat-tab" id="tabStudents" onclick="switchTab('students')">学生 (<span id="studentCount">0</span>)</button>
     </div>
     <button class="t-mute-all-btn" id="muteAllBtn" onclick="toggleAllMute()">全体禁言</button>
   </div>

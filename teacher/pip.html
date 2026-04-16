@@ -17,11 +17,13 @@ html, body { width:100%; height:100%; background:transparent; overflow:hidden; b
 <body>
 <video id="pip" autoplay muted playsinline></video>
 <canvas id="bgCanvas"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/selfie_segmentation.js"></script>
 <script>
 var stream = null;
 var currentBg = 'none';
 var bgImages = {};
 var segRaf = null;
+var segmentation = null;
 
 var BG_URLS = { meeting:'bg-meeting.jpg', study:'bg-study.jpg', living:'bg-living.jpg' };
 Object.keys(BG_URLS).forEach(function(k) {
@@ -37,31 +39,54 @@ function startCamera(deviceId) {
   }).catch(function(){});
 }
 
+function initSeg() {
+  if (segmentation) return;
+  segmentation = new SelfieSegmentation({
+    locateFile: function(file) {
+      return 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/' + file;
+    }
+  });
+  segmentation.setOptions({ modelSelection: 1, selfieMode: false });
+  segmentation.onResults(onResults);
+}
+
+function onResults(results) {
+  var canvas = document.getElementById('bgCanvas');
+  var w = canvas.width = results.image.width;
+  var h = canvas.height = results.image.height;
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, w, h);
+  if (currentBg !== 'none' && bgImages[currentBg] && bgImages[currentBg].complete) {
+    ctx.drawImage(bgImages[currentBg], 0, 0, w, h);
+  }
+  var off = document.createElement('canvas');
+  off.width = w; off.height = h;
+  var octx = off.getContext('2d');
+  octx.filter = 'blur(6px)';
+  octx.drawImage(results.segmentationMask, 0, 0, w, h);
+  octx.filter = 'none';
+  octx.globalCompositeOperation = 'source-in';
+  octx.drawImage(results.image, 0, 0, w, h);
+  ctx.drawImage(off, 0, 0);
+}
+
 function startBgCanvas() {
   var video = document.getElementById('pip');
   var canvas = document.getElementById('bgCanvas');
   canvas.style.display = 'block';
-  document.getElementById('pip').style.display = 'none';
-
-  function draw() {
-    if (!stream) return;
-    canvas.width = video.videoWidth || 320;
-    canvas.height = video.videoHeight || 240;
-    var ctx = canvas.getContext('2d');
-    if (currentBg !== 'none' && bgImages[currentBg] && bgImages[currentBg].complete) {
-      ctx.drawImage(bgImages[currentBg], 0, 0, canvas.width, canvas.height);
-    } else {
-      ctx.fillStyle = '#1a1a2e';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+  video.style.display = 'none';
+  initSeg();
+  function loop() {
+    if (!stream || currentBg === 'none') {
+      segRaf = requestAnimationFrame(loop);
+      return;
     }
-    ctx.save();
-    ctx.scale(-1, 1); ctx.translate(-canvas.width, 0);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    ctx.restore();
-    segRaf = requestAnimationFrame(draw);
+    segmentation.send({ image: video }).then(function() {
+      segRaf = requestAnimationFrame(loop);
+    });
   }
   if (segRaf) cancelAnimationFrame(segRaf);
-  draw();
+  loop();
 }
 
 function stopBgCanvas() {
@@ -70,6 +95,15 @@ function stopBgCanvas() {
   document.getElementById('pip').style.display = 'block';
 }
 
+function stopStream() {
+  if (segRaf) { cancelAnimationFrame(segRaf); segRaf = null; }
+  if (stream) { stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
+  document.getElementById('pip').srcObject = null;
+}
+
+// 窗口关闭/卸载时也停流，防止物理摄像头灯常亮
+window.addEventListener('beforeunload', function() { stopStream(); });
+
 if (window.pipAPI) {
   window.pipAPI.onStream(function(data) { startCamera(data.deviceId); });
   window.pipAPI.onVbgChange(function(bgId) {
@@ -77,6 +111,7 @@ if (window.pipAPI) {
     if (bgId === 'none') stopBgCanvas();
     else startBgCanvas();
   });
+  window.pipAPI.onStopStream(function() { stopStream(); });
 }
 </script>
 </body>

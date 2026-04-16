@@ -2,10 +2,11 @@ const { app, BrowserWindow, ipcMain, session, desktopCapturer, screen, Menu } = 
 const path = require('path');
 const { spawn } = require('child_process');
 
-let win, toolbarWin, pipWin, chatWin;
+let win, toolbarWin, pipWin, chatWin, vbgWin;
 let borderProcs = [];
 let liveSeconds = 0, networkSignal = 3, timerInterval = null;
 let shareState = { micOn: false, camOn: false, chatOpen: false };
+let currentVbgId = 'none';
 
 function createWindow() {
   win = new BrowserWindow({
@@ -30,7 +31,7 @@ function createWindow() {
   });
 
   win.loadFile(path.join(__dirname, 'index.html'));
-  win.webContents.openDevTools({ mode: 'detach' });
+  // win.webContents.openDevTools({ mode: 'detach' });
 }
 
 function createBorder(data) {
@@ -61,7 +62,7 @@ function createToolbar() {
     width: 660, height: 320,
     x: Math.round((width - 660) / 2),
     y: height - 320 - 14,
-    frame: false, transparent: true,
+    frame: false, transparent: true, hasShadow: false,
     alwaysOnTop: true, resizable: false,
     skipTaskbar: true,
     webPreferences: {
@@ -71,6 +72,7 @@ function createToolbar() {
   });
   toolbarWin.loadFile(path.join(__dirname, 'toolbar.html'));
   toolbarWin.setAlwaysOnTop(true, 'screen-saver');
+  toolbarWin.setIgnoreMouseEvents(true, { forward: true });
   toolbarWin.on('closed', () => { toolbarWin = null; });
 }
 
@@ -91,17 +93,20 @@ function createPip() {
   pipWin.setAlwaysOnTop(true, 'screen-saver');
   pipWin.webContents.once('did-finish-load', () => {
     pipWin.webContents.send('pip-stream', {});
+    if (currentVbgId !== 'none') {
+      pipWin.webContents.send('vbg-change', currentVbgId);
+    }
   });
   pipWin.on('closed', () => { pipWin = null; });
 }
 
 function createChatPanel() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-  const panelW = 320, panelH = Math.min(600, height - 100);
+  const panelW = 320, panelH = Math.min(640, height - 100);
   chatWin = new BrowserWindow({
     width: panelW, height: panelH,
     x: width - panelW - 12, y: Math.round((height - panelH) / 2),
-    frame: false, transparent: true,
+    frame: false, transparent: true, hasShadow: false,
     alwaysOnTop: true, resizable: false, skipTaskbar: true,
     webPreferences: {
       nodeIntegration: false, contextIsolation: true,
@@ -116,6 +121,40 @@ function createChatPanel() {
   });
 }
 
+function closePip() {
+  if (!pipWin) return;
+  const w = pipWin;
+  pipWin = null;
+  try {
+    w.webContents.executeJavaScript('if(typeof stopStream==="function")stopStream()')
+      .catch(() => {})
+      .finally(() => { try { w.close(); } catch(e) {} });
+  } catch(e) {
+    try { w.close(); } catch(e2) {}
+  }
+}
+
+function createVbgModal(curBg) {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const mW = 480, mH = 520;
+  vbgWin = new BrowserWindow({
+    width: mW, height: mH,
+    x: Math.round((width - mW) / 2), y: Math.round((height - mH) / 2),
+    frame: false, transparent: true, hasShadow: false,
+    alwaysOnTop: true, resizable: false, skipTaskbar: true,
+    webPreferences: {
+      nodeIntegration: false, contextIsolation: true,
+      preload: path.join(__dirname, 'preload-toolbar.js')
+    }
+  });
+  vbgWin.loadFile(path.join(__dirname, 'vbg-modal.html'));
+  vbgWin.setAlwaysOnTop(true, 'screen-saver');
+  vbgWin.webContents.once('did-finish-load', () => {
+    vbgWin.webContents.send('vbg-init', curBg || 'none');
+  });
+  vbgWin.on('closed', () => { vbgWin = null; });
+}
+
 function activateWindows(windowIds) {
   if (!windowIds || !windowIds.length) return;
   const bin = path.join(__dirname, 'native', 'corner-overlay');
@@ -125,6 +164,7 @@ function activateWindows(windowIds) {
 
 function startShareMode(data) {
   shareState = { micOn: data.micOn || false, camOn: data.camOn || false, chatOpen: false, screenLabel: data.screenLabel || '共享中', appIcons: data.appIcons || [] };
+  currentVbgId = data.vbgId || 'none';
   liveSeconds = data.seconds || 0;
   networkSignal = data.signal || 3;
 
@@ -156,8 +196,16 @@ function startShareMode(data) {
 function stopShareMode() {
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   if (toolbarWin) { toolbarWin.close(); toolbarWin = null; }
-  if (pipWin) { pipWin.close(); pipWin = null; }
+  if (pipWin) {
+    try {
+      pipWin.webContents.executeJavaScript('if(typeof stopStream==="function")stopStream()').catch(() => {});
+    } catch(e) {}
+    try { pipWin.close(); } catch(e) {}
+    pipWin = null;
+  }
   if (chatWin) { chatWin.close(); chatWin = null; }
+  if (vbgWin) { vbgWin.close(); vbgWin = null; }
+  currentVbgId = 'none';
   borderProcs.forEach(p => { try { p.kill(); } catch(e) {} });
   borderProcs = [];
   if (win) { win.show(); win.focus(); }
@@ -264,7 +312,12 @@ ipcMain.handle('get-sources', async () => {
         return { id: 'window:' + wid + ':0', windowId: wid, name: w.owner, thumbnail, appIcon };
       })
     ]);
-    return result.filter(Boolean);
+    const seen = new Set();
+    return result.filter(Boolean).filter(item => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
   } catch (err) {
     console.error('[get-sources] error:', err);
     return [];
@@ -296,7 +349,22 @@ ipcMain.on('toolbar-action', (e, action) => {
   // 虚拟背景切换
   if (action.startsWith('vbg:')) {
     const bgId = action.slice(4);
+    currentVbgId = bgId;
     if (pipWin) pipWin.webContents.send('vbg-change', bgId);
+    if (toolbarWin) toolbarWin.webContents.send('vbg-applied', bgId);
+    if (win) win.webContents.send('toolbar-action', 'vbg-sync:' + bgId);
+    return;
+  }
+  // 打开虚拟背景弹窗
+  if (action.startsWith('open-vbg')) {
+    const curBg = action.includes(':') ? action.split(':')[1] : 'none';
+    if (vbgWin) { vbgWin.focus(); return; }
+    createVbgModal(curBg);
+    return;
+  }
+  // 关闭虚拟背景弹窗
+  if (action === 'close-vbg-modal') {
+    if (vbgWin) { vbgWin.close(); vbgWin = null; }
     return;
   }
   if (action === 'stop') {
@@ -313,7 +381,7 @@ ipcMain.on('toolbar-action', (e, action) => {
   if (action === 'cam') {
     shareState.camOn = !shareState.camOn;
     if (shareState.camOn && !pipWin) createPip();
-    if (!shareState.camOn && pipWin) { pipWin.close(); pipWin = null; }
+    if (!shareState.camOn && pipWin) closePip();
     if (toolbarWin) toolbarWin.webContents.send('state-update', shareState);
     if (win) win.webContents.send('toolbar-action', 'cam');
     return;
@@ -353,6 +421,43 @@ ipcMain.on('show-device-menu', (e, type, devices, currentId) => {
 // IPC: 虚拟背景切换，转发给 pip 窗口
 ipcMain.on('vbg-change', (e, bgId) => {
   if (pipWin) pipWin.webContents.send('vbg-change', bgId);
+});
+
+// IPC: 透明区域点击穿透
+ipcMain.on('set-ignore-mouse-events', (e, ignore, opts) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (win) win.setIgnoreMouseEvents(ignore, opts || {});
+});
+
+// IPC: 聊天同步 — 主窗口回传初始数据
+ipcMain.on('chat-data', (e, data) => {
+  if (chatWin) chatWin.webContents.send('chat-init', data);
+});
+
+// IPC: 聊天面板主动请求数据
+ipcMain.on('chat-request-data', () => {
+  if (win) win.webContents.send('chat-request');
+});
+
+// IPC: 聊天面板发消息 → 转发给主窗口
+ipcMain.on('chat-new-msg-from-panel', (e, msg) => {
+  if (win) win.webContents.send('chat-new-msg', msg);
+});
+
+// IPC: 主窗口发消息 → 转发给聊天面板
+ipcMain.on('chat-new-msg-from-main', (e, msg) => {
+  if (chatWin) chatWin.webContents.send('chat-new-msg', msg);
+});
+
+// IPC: 聊天面板禁言操作 → 转发给主窗口
+ipcMain.on('chat-mute-from-panel', (e, data) => {
+  if (win) win.webContents.send('chat-mute-sync', data);
+});
+
+// IPC: 全屏切换
+ipcMain.on('toggle-fullscreen', () => {
+  if (!win) return;
+  win.setFullScreen(!win.isFullScreen());
 });
 
 app.whenReady().then(() => {
