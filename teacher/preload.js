@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   loginSuccess: () => ipcRenderer.send('login-success'),
+  logout: () => ipcRenderer.send('logout'),
   screenShareStart: (data) => ipcRenderer.send('screen-share-start', data),
   screenShareStop: () => ipcRenderer.send('screen-share-stop'),
   getSources: () => ipcRenderer.invoke('get-sources'),

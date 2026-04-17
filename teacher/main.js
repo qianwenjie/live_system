@@ -79,7 +79,7 @@ function createToolbar() {
 function createPip() {
   const { width } = screen.getPrimaryDisplay().workAreaSize;
   pipWin = new BrowserWindow({
-    width: 200, height: 150,
+    width: 200, height: 120,
     x: width - 220, y: 20,
     frame: false, transparent: true,
     alwaysOnTop: true, resizable: false,
@@ -330,6 +330,14 @@ ipcMain.on('login-success', () => {
   win.setResizable(true);
   win.setMinimumSize(960, 600);
   win.setSize(1280, 800);
+  win.center();
+});
+
+ipcMain.on('logout', () => {
+  if (!win) return;
+  win.setMinimumSize(420, 580);
+  win.setSize(420, 580);
+  win.setResizable(false);
   win.center();
 });
 

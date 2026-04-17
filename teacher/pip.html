@@ -81,6 +81,10 @@ function startBgCanvas() {
       segRaf = requestAnimationFrame(loop);
       return;
     }
+    if (video.readyState < 2 || video.videoWidth === 0) {
+      segRaf = requestAnimationFrame(loop);
+      return;
+    }
     segmentation.send({ image: video }).then(function() {
       segRaf = requestAnimationFrame(loop);
     });

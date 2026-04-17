@@ -28,14 +28,21 @@
       </div>
       <div v-else-if="loginType==='org'" class="form-grid">
         <template v-if="orgStep===1">
-          <label><span>机构账号</span><input v-model="forms.user" placeholder="请输入账号"></label>
-          <label><span>登录密码</span><input type="password" v-model="forms.orgPass" placeholder="请输入密码"></label>
-          <button class="primary login-btn" @click="orgNextStep">下一步</button>
+          <label><span>学校名称</span><input v-model="forms.org" placeholder="请输入学校名称" ref="orgNameInput"></label>
+          <p v-if="orgError" class="login-error">{{ orgError }}</p>
+          <button class="primary login-btn" @click="verifyOrg" :disabled="orgVerifying">
+            {{ orgVerifying ? '校验中…' : '下一步' }}
+          </button>
         </template>
         <template v-else>
-          <label><span>学校名称</span><input v-model="forms.org" placeholder="请输入学校名称" ref="orgNameInput"></label>
+          <div class="org-verified">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1f8b73" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>{{ forms.org }}</span>
+            <button class="org-change" @click="orgStep=1;orgError=''">更换</button>
+          </div>
+          <label><span>账号</span><input v-model="forms.user" placeholder="请输入账号"></label>
+          <label><span>密码</span><input type="password" v-model="forms.orgPass" placeholder="请输入密码"></label>
           <button class="primary login-btn" @click="submitLogin('org')">登录</button>
-          <button class="ghost login-btn-back" @click="orgStep=1">返回</button>
         </template>
       </div>
       <div v-else class="auto-box">
@@ -123,7 +130,7 @@
             </div>
             <div class="cv2-card-footer">
               <span class="cv2-card-mode">{{ c.roomId }}</span>
-              <button class="cv2-card-btn" @click.stop="openCourse(c)">
+              <button class="cv2-card-btn" :class="!canEnter(c)?'cv2-card-btn--disabled':''" :disabled="!canEnter(c)" @click.stop="openCourse(c)">
                 {{ c.status==='直播中' ? (hasEnteredLive ? '重新进入' : '开始上课') : '开始上课' }}
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </button>
@@ -198,7 +205,7 @@
             <span class="cv2-detail-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>助教</span>
             <span>{{ course.assistant }}</span>
           </div>
-          <button class="cv2-detail-enter" @click="openCourse(course)" v-if="course.status!=='已结束'">
+          <button class="cv2-detail-enter" :class="!canEnter(course)?'cv2-detail-enter--disabled':''" :disabled="!canEnter(course)" @click="openCourse(course)" v-if="course.status!=='已结束'">
             {{ course.status==='直播中' ? (hasEnteredLive ? '重新进入' : '开始上课') : '开始上课' }}
           </button>
         </div>
@@ -236,7 +243,7 @@
               <span class="cv2-meter-label">输入等级</span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="9" y="2" width="6" height="12" rx="3" fill="#1f8b73"/><path d="M5 10a7 7 0 0 0 14 0" stroke="#1f8b73" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="17" x2="12" y2="21" stroke="#1f8b73" stroke-width="2" stroke-linecap="round"/></svg>
               <div class="check-meter-blocks">
-                <span v-for="i in 12" :key="i" class="check-meter-block" :class="i <= Math.round(micMeter/100*12) ? 'active' : ''"></span>
+                <span v-for="i in 12" :key="i" class="check-meter-block" :class="i <= Math.round((device.micTesting?micMeter:0)/100*12) ? 'active' : ''"></span>
               </div>
             </div>
 
@@ -254,7 +261,7 @@
               <span class="cv2-meter-label">输出等级</span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H2v6h4l5 4V5Z" fill="#1f8b73"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="#1f8b73" stroke-width="2" stroke-linecap="round"/></svg>
               <div class="check-meter-blocks">
-                <span v-for="i in 12" :key="i" class="check-meter-block" :class="i <= Math.round(speakerMeter/100*12) ? 'active' : ''"></span>
+                <span v-for="i in 12" :key="i" class="check-meter-block" :class="i <= Math.round((device.speakerTesting?speakerMeter:0)/100*12) ? 'active' : ''"></span>
               </div>
             </div>
 
@@ -338,7 +345,7 @@
   <section v-else-if="route==='check'" class="check-page">
     <div class="check-card">
       <div class="check-header">
-        <h2>设备检测</h2>
+        <h2>设备设置</h2>
       </div>
       <div class="check-body">
         <!-- 左：摄像头 -->
@@ -414,7 +421,7 @@
         </div>
       </div>
       <div class="check-footer">
-        <button class="check-done-btn" @click="go('live')">完成检测并进入直播</button>
+        <button class="check-done-btn" @click="go('live')">开始上课</button>
       </div>
     </div>
   </section>
@@ -584,7 +591,7 @@
     <!-- 底部工具栏 -->
     <div class="live-toolbar">
       <!-- 设备检测 -->
-      <button class="live-tool-btn" @click="ui.checkModal=true">
+      <button class="live-tool-btn" @click="openCheckModal()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-5l-1.5 1.5L8 11.5l4-4 4 4-1.5 1.5L13 11.5v5h-2z" opacity="0" />
           <circle cx="12" cy="12" r="10"/>
@@ -596,7 +603,7 @@
       <!-- 麦克风 -->
       <div class="live-mic-btn-wrap">
         <button class="live-tool-btn live-mic-main" :class="!live.micOn?'off':''" @click="toggleMic()">
-          <svg width="16" height="22" viewBox="0 0 16 24" class="live-mic-svg">
+          <svg width="12" height="16" viewBox="0 0 16 24" class="live-mic-svg">
             <defs>
               <clipPath id="micBodyClip">
                 <rect x="4" y="0.5" width="8" height="13" rx="4"/>
@@ -633,7 +640,7 @@
       <!-- 摄像头 -->
       <div class="live-mic-btn-wrap">
         <button class="live-tool-btn live-mic-main" :class="!live.camOn?'off':''" @click="toggleCam()">
-          <svg width="22" height="16" viewBox="0 0 1024 1024" fill="none">
+          <svg width="18" height="14" viewBox="0 0 1024 1024" fill="none">
             <path d="M943.488 260a32.008 32.008 0 0 0-32.48 0.864L800 330.368V288c0-52.928-43.072-96-96-96H160c-52.928 0-96 43.072-96 96v448c0 52.928 43.072 96 96 96h544c52.928 0 96-43.072 96-96v-38.88l111.648 66.368A31.818 31.818 0 0 0 928 768a31.938 31.938 0 0 0 15.808-4.192A32.001 32.001 0 0 0 960 736V288a31.947 31.947 0 0 0-16.512-28z" :fill="live.camOn ? 'currentColor' : '#ef4444'"/>
             <line v-if="!live.camOn" x1="80" y1="80" x2="944" y2="944" stroke="white" stroke-width="100" stroke-linecap="round"/>
           </svg>
@@ -659,7 +666,7 @@
       </div>
       <div style="flex:1"></div>
       <button class="live-tool-btn" @click="toggleChat()">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
           <path d="M20 2H4C2.9 2 2 2.9 2 4v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
         </svg>
         <span>{{ live.chatOpen ? '折叠聊天' : '展开聊天' }}</span>
@@ -753,11 +760,11 @@
     </div>
 
     <!-- 设备检测弹窗 -->
-    <div v-if="ui.checkModal" class="modal-mask" @click.self="ui.checkModal=false">
+    <div v-if="ui.checkModal" class="modal-mask" @click.self="closeCheckModal()">
       <div class="modal modal-check">
         <div class="modal-check-header">
           <h3>设备检测</h3>
-          <button class="modal-close-btn" @click="ui.checkModal=false">
+          <button class="modal-close-btn" @click="closeCheckModal()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
@@ -775,6 +782,22 @@
               <canvas ref="modalBgCanvas" class="check-bg-canvas" :style="device.vbgId!=='none'?'display:block':''"></canvas>
               <div v-if="device.camStatus!=='ok'" class="check-video-empty"><span>摄像头未连接</span></div>
             </div>
+            <div class="check-section-title" style="margin-top:14px">虚拟背景</div>
+            <div class="check-vbg-row">
+              <button v-for="bg in checkBgs" :key="bg.id"
+                class="check-vbg-btn" :class="device.vbgId===bg.id?'active':''"
+                @click="selectCheckBg(bg.id)">
+                <span class="check-vbg-thumb">
+                  <template v-if="bg.id==='none'">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                  </template>
+                  <template v-else>
+                    <img :src="bg.thumb" style="width:100%;height:100%;object-fit:cover;border-radius:6px">
+                  </template>
+                </span>
+                <span class="check-vbg-label">{{ bg.label }}</span>
+              </button>
+            </div>
           </div>
           <div class="check-right">
             <div class="check-section-title">麦克风</div>
@@ -789,7 +812,7 @@
             <div class="check-meter-row" style="margin-top:14px">
               <span class="check-meter-label">输入等级</span>
               <div class="check-meter-blocks">
-                <span v-for="i in 12" :key="i" class="check-meter-block" :class="i <= Math.round(micMeter/100*12) ? 'active' : ''"></span>
+                <span v-for="i in 12" :key="i" class="check-meter-block" :class="i <= Math.round((device.micTesting?micMeter:0)/100*12) ? 'active' : ''"></span>
               </div>
             </div>
             <div class="check-section-title" style="margin-top:28px">扬声器</div>
@@ -804,13 +827,13 @@
             <div class="check-meter-row" style="margin-top:14px">
               <span class="check-meter-label">输出等级</span>
               <div class="check-meter-blocks">
-                <span v-for="i in 12" :key="i" class="check-meter-block" :class="i <= Math.round(speakerMeter/100*12) ? 'active' : ''"></span>
+                <span v-for="i in 12" :key="i" class="check-meter-block" :class="i <= Math.round((device.speakerTesting?speakerMeter:0)/100*12) ? 'active' : ''"></span>
               </div>
             </div>
           </div>
         </div>
         <div class="check-footer">
-          <button class="check-done-btn" @click="ui.checkModal=false">完成检测</button>
+          <button class="check-done-btn" @click="closeCheckModal()">确认设置</button>
         </div>
       </div>
     </div>
@@ -824,7 +847,7 @@
       <p style="font-size:13px;color:#6b7280;margin:0 0 24px">确定要退出登录吗？</p>
       <div style="display:flex;gap:12px">
         <button style="flex:1;padding:10px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;color:#374151;font-size:13px;font-weight:500;cursor:pointer" @click="ui.logoutConfirm=false">取消</button>
-        <button style="flex:1;padding:10px;border-radius:8px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:600;cursor:pointer" @click="ui.logoutConfirm=false;go('login')">确认退出</button>
+        <button style="flex:1;padding:10px;border-radius:8px;border:none;background:#ef4444;color:#fff;font-size:13px;font-weight:600;cursor:pointer" @click="ui.logoutConfirm=false;doLogout()">确认退出</button>
       </div>
     </div>
   </div>
