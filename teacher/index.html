@@ -508,8 +508,9 @@
             </div>
           </div>
           <h2 class="live-idle-title">{{ course.title }}</h2>
-          <p v-if="live.started" class="live-idle-meta">
-            <span class="live-dot-badge live-dot-badge--idle"><span class="live-bars"><i></i><i></i><i></i></span>直播中</span>
+          <p class="live-idle-meta">
+            <span v-if="live.started" class="live-dot-badge live-dot-badge--idle"><span class="live-bars"><i></i><i></i><i></i></span>直播中</span>
+            <span v-else>直播老师：{{ course.teacher }}</span>
           </p>
           <!-- 候场模式：开始上课；正式模式：共享屏幕 -->
           <button v-if="!live.started" class="live-share-btn" style="background:#1f8b73" @click="beginClass()">

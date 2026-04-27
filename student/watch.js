@@ -7,7 +7,7 @@ new Vue({
       title: '高等数学直播课', teacher: '王教授', badge: '直播进行中',
       description: '进入后点击开始观看，即可进入课堂直播画面。',
       onlineCount: 42, chatOpen: true, liveBaseSeconds: 1380,
-      network: '网络良好', liveHint: '老师当前正在共享课件与板书内容。', started: false
+      network: '网络良好', liveHint: '老师当前正在共享课件与板书内容。', started: false, screenSharing: false
     },
     messages: [
       { id: 1, user: '教务助手', type: 'system', time: '19:20', content: '课程已开放进入，请保持网络稳定。' },
