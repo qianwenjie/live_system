@@ -131,7 +131,7 @@
             <div class="cv2-card-footer">
               <span class="cv2-card-mode">{{ c.roomId }}</span>
               <button class="cv2-card-btn" :class="!canEnter(c)?'cv2-card-btn--disabled':''" :disabled="!canEnter(c)" @click.stop="openCourse(c)">
-                {{ c.status==='直播中' ? (hasEnteredLive ? '重新进入' : '开始上课') : '开始上课' }}
+                {{ c.status==='直播中' ? (hasEnteredLive ? '重新进入' : '进入直播') : '进入直播' }}
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
               </button>
             </div>
@@ -206,7 +206,7 @@
             <span>{{ course.assistant }}</span>
           </div>
           <button class="cv2-detail-enter" :class="!canEnter(course)?'cv2-detail-enter--disabled':''" :disabled="!canEnter(course)" @click="openCourse(course)" v-if="course.status!=='已结束'">
-            {{ course.status==='直播中' ? (hasEnteredLive ? '重新进入' : '开始上课') : '开始上课' }}
+            {{ course.status==='直播中' ? (hasEnteredLive ? '重新进入' : '进入直播') : '进入直播' }}
           </button>
         </div>
         <div class="cv2-config-panel">
@@ -421,12 +421,42 @@
         </div>
       </div>
       <div class="check-footer">
-        <button class="check-done-btn" @click="go('live')">开始上课</button>
+        <button class="check-done-btn" @click="go('live')">完成检测并进入</button>
       </div>
     </div>
   </section>
 
   <section v-else class="live-page">
+
+    <!-- 等待遮罩 -->
+    <div v-if="live.waiting" class="live-waiting-mask">
+      <div class="live-waiting-card">
+        <div class="live-waiting-badge">直播间已就绪</div>
+        <h2 class="live-waiting-title">{{ course.title }}</h2>
+        <div class="live-waiting-meta">
+          <span class="live-waiting-meta-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
+            讲师：{{ course.teacher }}
+          </span>
+          <span v-if="course.assistant" class="live-waiting-meta-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
+            助教：{{ course.assistant }}
+          </span>
+          <span class="live-waiting-meta-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            学生：{{ course.students }} 人
+          </span>
+        </div>
+        <div class="live-waiting-countdown">
+          <div class="live-waiting-countdown-label">距上课时间</div>
+          <div class="live-waiting-countdown-time">{{ waitingCountdown }}</div>
+        </div>
+        <button class="live-waiting-start-btn" @click="startLive()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          开始上课
+        </button>
+      </div>
+    </div>
 
     <!-- 顶部状态栏 -->
     <header class="live-topbar">

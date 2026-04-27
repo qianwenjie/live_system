@@ -478,3 +478,18 @@
 .org-verified svg{flex-shrink:0}
 .org-change{margin-left:auto;border:none;background:none;color:#1f8b73;font-size:12px;font-weight:600;cursor:pointer;padding:0}
 .org-change:hover{text-decoration:underline}
+
+/* ===== 直播间等待遮罩 ===== */
+.live-waiting-mask{position:fixed;inset:0;background:rgba(10,16,28,.88);backdrop-filter:blur(8px);display:grid;place-items:center;z-index:200}
+.live-waiting-card{width:min(440px,90vw);background:#fff;border-radius:20px;padding:36px 32px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.25)}
+.live-waiting-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;background:#dcfce7;color:#166534;font-size:12px;font-weight:600;margin-bottom:20px}
+.live-waiting-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:#22c55e;animation:cv2-pulse 1.5s ease-in-out infinite}
+.live-waiting-title{font-size:20px;font-weight:700;color:#111;margin-bottom:20px;line-height:1.4}
+.live-waiting-meta{display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
+.live-waiting-meta-item{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:13px;color:#555}
+.live-waiting-meta-item svg{color:#9ca3af;flex-shrink:0}
+.live-waiting-countdown{background:#f5f6f8;border-radius:12px;padding:16px;margin-bottom:28px}
+.live-waiting-countdown-label{font-size:12px;color:#9ca3af;margin-bottom:6px}
+.live-waiting-countdown-time{font-size:22px;font-weight:700;color:#1f8b73;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.live-waiting-start-btn{display:inline-flex;align-items:center;gap:8px;padding:13px 40px;border-radius:12px;border:none;background:#1f8b73;color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:.18s}
+.live-waiting-start-btn:hover{background:#17755f;transform:translateY(-1px)}
