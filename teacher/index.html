@@ -428,36 +428,6 @@
 
   <section v-else class="live-page">
 
-    <!-- 等待遮罩 -->
-    <div v-if="live.waiting" class="live-waiting-mask">
-      <div class="live-waiting-card">
-        <div class="live-waiting-badge">直播间已就绪</div>
-        <h2 class="live-waiting-title">{{ course.title }}</h2>
-        <div class="live-waiting-meta">
-          <span class="live-waiting-meta-item">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
-            讲师：{{ course.teacher }}
-          </span>
-          <span v-if="course.assistant" class="live-waiting-meta-item">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
-            助教：{{ course.assistant }}
-          </span>
-          <span class="live-waiting-meta-item">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            学生：{{ course.students }} 人
-          </span>
-        </div>
-        <div class="live-waiting-countdown">
-          <div class="live-waiting-countdown-label">距上课时间</div>
-          <div class="live-waiting-countdown-time">{{ waitingCountdown }}</div>
-        </div>
-        <button class="live-waiting-start-btn" @click="startLive()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-          开始上课
-        </button>
-      </div>
-    </div>
-
     <!-- 顶部状态栏 -->
     <header class="live-topbar">
       <!-- 左：课节名称、直播老师、助教老师 / 共享中提示 -->
@@ -480,8 +450,8 @@
           </span>
         </template>
       </div>
-      <!-- 中：直播中、已直播时间、直播信号 -->
-      <div class="live-topbar-center">
+      <!-- 中：直播中、已直播时间、直播信号（正式上课后才显示） -->
+      <div class="live-topbar-center" v-if="live.started">
         <span class="live-dot-badge"><i class="live-dot"></i>直播中</span>
         <span class="live-meta-chip live-timer-chip">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
@@ -538,13 +508,20 @@
             </div>
           </div>
           <h2 class="live-idle-title">{{ course.title }}</h2>
-          <p class="live-idle-meta">直播老师：{{ course.teacher }}</p>
-          <button class="live-share-btn" @click="toggleScreen()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            开始共享屏幕
+          <p v-if="live.started" class="live-idle-meta">
+            <span class="live-dot-badge live-dot-badge--idle"><span class="live-bars"><i></i><i></i><i></i></span>直播中</span>
+          </p>
+          <!-- 候场模式：开始上课；正式模式：共享屏幕 -->
+          <button v-if="!live.started" class="live-share-btn" style="background:#1f8b73" @click="beginClass()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            开始上课
           </button>
-          <!-- 设备状态 -->
-          <div class="live-idle-device-status">
+          <button v-else class="live-share-btn live-share-btn--screen" @click="toggleScreen()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            共享屏幕
+          </button>
+          <!-- 设备状态（正式上课后才显示） -->
+          <div v-if="live.started" class="live-idle-device-status">
             <span class="live-idle-device-item" :class="live.camOn ? 'on' : 'off'">
               <svg width="14" height="11" viewBox="0 0 1024 1024" :fill="live.camOn ? '#22c55e' : 'rgba(255,255,255,0.3)'"><path d="M943.488 260a32.008 32.008 0 0 0-32.48 0.864L800 330.368V288c0-52.928-43.072-96-96-96H160c-52.928 0-96 43.072-96 96v448c0 52.928 43.072 96 96 96h544c52.928 0 96-43.072 96-96v-38.88l111.648 66.368A31.818 31.818 0 0 0 928 768a31.938 31.938 0 0 0 15.808-4.192A32.001 32.001 0 0 0 960 736V288a31.947 31.947 0 0 0-16.512-28zM256 448c-35.296 0-64-28.704-64-64s28.704-64 64-64 64 28.704 64 64-28.704 64-64 64z"/></svg>
               {{ live.camOn ? '摄像头已开启' : '摄像头已关闭' }}
@@ -620,7 +597,7 @@
 
     <!-- 底部工具栏 -->
     <div class="live-toolbar">
-      <!-- 设备检测 -->
+      <!-- 设备检测（始终显示） -->
       <button class="live-tool-btn" @click="openCheckModal()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-5l-1.5 1.5L8 11.5l4-4 4 4-1.5 1.5L13 11.5v5h-2z" opacity="0" />
@@ -629,9 +606,8 @@
         </svg>
         <span>设备检测</span>
       </button>
-      <div class="live-tool-divider"></div>
-      <!-- 麦克风 -->
-      <div class="live-mic-btn-wrap">
+      <!-- 麦克风（正式上课后才显示） -->
+      <div v-if="live.started" class="live-mic-btn-wrap">
         <button class="live-tool-btn live-mic-main" :class="!live.micOn?'off':''" @click="toggleMic()">
           <svg width="12" height="16" viewBox="0 0 16 24" class="live-mic-svg">
             <defs>
@@ -667,8 +643,8 @@
           </div>
         </div>
       </div>
-      <!-- 摄像头 -->
-      <div class="live-mic-btn-wrap">
+      <!-- 摄像头（正式上课后才显示） -->
+      <div v-if="live.started" class="live-mic-btn-wrap">
         <button class="live-tool-btn live-mic-main" :class="!live.camOn?'off':''" @click="toggleCam()">
           <svg width="18" height="14" viewBox="0 0 1024 1024" fill="none">
             <path d="M943.488 260a32.008 32.008 0 0 0-32.48 0.864L800 330.368V288c0-52.928-43.072-96-96-96H160c-52.928 0-96 43.072-96 96v448c0 52.928 43.072 96 96 96h544c52.928 0 96-43.072 96-96v-38.88l111.648 66.368A31.818 31.818 0 0 0 928 768a31.938 31.938 0 0 0 15.808-4.192A32.001 32.001 0 0 0 960 736V288a31.947 31.947 0 0 0-16.512-28z" :fill="live.camOn ? 'currentColor' : '#ef4444'"/>
@@ -701,9 +677,9 @@
         </svg>
         <span>{{ live.chatOpen ? '折叠聊天' : '展开聊天' }}</span>
       </button>
-      <div class="live-tool-divider"></div>
-      <!-- 结束直播 -->
-      <button class="live-end-btn-toolbar" @click="ui.endConfirm=true">
+      <div class="live-tool-divider" v-if="live.started"></div>
+      <!-- 结束直播（正式上课后才显示） -->
+      <button v-if="live.started" class="live-end-btn-toolbar" @click="ui.endConfirm=true">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
           <rect x="2" y="2" width="20" height="20" rx="4"/>
           <line x1="7" y1="7" x2="17" y2="17" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
